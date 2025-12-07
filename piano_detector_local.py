@@ -1,17 +1,3 @@
-"""
-piano_detector_local.py (GPU-only with PyTorch)
-Detects piano note pitch using a locally stored NSynth dataset and a PyTorch neural network.
-
-Usage:
-  1. Place nsynth-train.jsonwav.tar.gz in the same folder.
-  2. Install dependencies:
-     pip install torch torchaudio soundfile scikit-learn numpy tqdm
-  3. Run training:
-     python piano_detector_local.py --train --max-samples 100
-  4. Predict:
-     python piano_detector_local.py --predict path/to/file.wav
-"""
-
 import argparse, os, tarfile, json
 import numpy as np
 import soundfile as sf
@@ -38,7 +24,7 @@ N_MELS = 128
 BATCH_SIZE = 32
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🎧 Using device: {device}")
+print(f"Using device: {device}")
 
 # -------------------------------
 # Neural Network Model
@@ -64,13 +50,13 @@ class PitchClassifier(nn.Module):
 # -------------------------------
 def extract_dataset_once():
     if not os.path.exists(EXTRACTED_FOLDER):
-        print("📦 Extracting dataset to disk…")
+        print("Extracting dataset to disk…")
         if not os.path.exists(DATA_ARCHIVE):
             raise FileNotFoundError(f"Dataset archive {DATA_ARCHIVE} not found in {os.getcwd()}")
         try:
             with tarfile.open(DATA_ARCHIVE, "r:gz") as tar:
                 tar.extractall(EXTRACTED_FOLDER)
-            print(f"✅ Extracted to {EXTRACTED_FOLDER}")
+            print(f"Extracted to {EXTRACTED_FOLDER}")
             # Verify JSON file exists
             json_path = os.path.join(EXTRACTED_FOLDER, "nsynth-train", "examples.json")
             if not os.path.exists(json_path):
@@ -78,7 +64,7 @@ def extract_dataset_once():
         except tarfile.TarError as e:
             raise RuntimeError(f"Failed to extract {DATA_ARCHIVE}: {e}")
     else:
-        print(f"📂 Dataset already extracted in {EXTRACTED_FOLDER}")
+        print(f"Dataset already extracted in {EXTRACTED_FOLDER}")
 
 # -------------------------------
 # Step 2: GPU Batch Feature Extraction
@@ -142,7 +128,7 @@ def precompute_features(max_samples=2000):
                 sr_list.append(sr)
                 labels.append(metadata[key]["pitch"]-21)
             except Exception as e:
-                print(f"⚠️ Skipped {key}: {e}")
+                print(f"Skipped {key}: {e}")
 
         if audio_list:
             feats = extract_features_batch(audio_list, sr_list)
@@ -193,13 +179,13 @@ def train(max_samples):
 
     # Determine test_size for stratification
     if num_samples < 10 or num_classes == 0:
-        print("⚠️ Too few samples or classes after filtering. Using non-stratified split.")
+        print("Too few samples or classes after filtering. Using non-stratified split.")
         test_size = 0.2
         stratify = None
     else:
         min_test_size = num_classes / num_samples  # Ensure at least one sample per class
         if min_test_size > 0.5:
-            print(f"⚠️ Minimum test size {min_test_size:.2f} too large. Using non-stratified split.")
+            print(f"Minimum test size {min_test_size:.2f} too large. Using non-stratified split.")
             test_size = 0.2
             stratify = None
         else:
@@ -253,7 +239,7 @@ def train(max_samples):
         'label_to_index': label_to_index,
         'num_classes': int(num_classes)  # Convert to Python int
     }, MODEL_PATH)
-    print(f"✅ Model saved to {MODEL_PATH}")
+    print(f"Model saved to {MODEL_PATH}")
 
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
@@ -301,7 +287,7 @@ def train(max_samples):
         'label_to_index': label_to_index,
         'num_classes': num_classes
     }, MODEL_PATH)
-    print(f"✅ Model saved to {MODEL_PATH}")
+    print(f"Model saved to {MODEL_PATH}")
 
 # -------------------------------
 # Prediction
@@ -309,12 +295,12 @@ def train(max_samples):
 
 def predict(wav_file):
     if not os.path.exists(MODEL_PATH):
-        print("⚠️ No model found. Train first.")
+        print("No model found. Train first.")
         return
     try:
         y_audio, sr = sf.read(wav_file)
         if len(y_audio) < SAMPLE_RATE // 4:
-            print("⚠️ Audio file is too short.")
+            print("Audio file is too short.")
             return
         if y_audio.ndim > 1:
             y_audio = np.mean(y_audio, axis=1)
@@ -325,7 +311,7 @@ def predict(wav_file):
             ).numpy()
             sr = SAMPLE_RATE
     except Exception as e:
-        print(f"⚠️ Failed to read {wav_file}: {e}")
+        print(f"Failed to read {wav_file}: {e}")
         return
 
     feats = extract_features_batch([y_audio], [sr])
@@ -340,7 +326,7 @@ def predict(wav_file):
     try:
         model.load_state_dict(checkpoint['model_state_dict'])
     except Exception as e:
-        print(f"⚠️ Failed to load model: {e}")
+        print(f"Failed to load model: {e}")
         return
     model.eval()
 
@@ -352,7 +338,7 @@ def predict(wav_file):
     notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
     name, octave = notes[midi % 12], midi // 12 - 1
 
-    print(f"🎹 Predicted note: {name}{octave} (MIDI {midi})")
+    print(f"Predicted note: {name}{octave} (MIDI {midi})")
 
 # -------------------------------
 # Main
@@ -369,4 +355,5 @@ if __name__ == "__main__":
     elif args.predict:
         predict(args.predict)
     else:
+
         print("Usage: python piano_detector_local.py --train OR --predict file.wav")
