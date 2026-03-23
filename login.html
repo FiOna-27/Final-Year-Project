@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Space Mono',monospace;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+
+  /* Animated piano key background */
+  .bg-keys{
+    position:fixed; inset:0; display:flex; align-items:flex-end;
+    pointer-events:none; z-index:0; opacity:0.06;
+  }
+  .bg-key{
+    flex:1; height:60vh; background:var(--text); border-radius:0 0 6px 6px;
+    border-right:1px solid var(--bg);
+    animation:keyFloat 4s ease-in-out infinite;
+  }
+  .bg-key:nth-child(even){ animation-delay:-2s; }
+  .bg-key:nth-child(3n)  { animation-delay:-1s; }
+  @keyframes keyFloat{ 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.04)} }
+
+  /* Grain overlay */
+  body::before{
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:1; opacity:0.5;
+  }
+
+  .card{
+    position:relative; z-index:2;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; padding:48px 44px; width:100%; max-width:420px;
+    box-shadow:0 40px 80px rgba(0,0,0,0.6);
+    animation:cardIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes cardIn{ from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+  .logo{
+    font-family:'Playfair Display',serif; font-size:1.8rem;
+    color:var(--accent); letter-spacing:0.04em; margin-bottom:4px;
+  }
+  .logo-sub{
+    font-size:0.62rem; letter-spacing:0.22em; color:var(--text-dim);
+    text-transform:uppercase; margin-bottom:36px;
+  }
+
+  /* Tab switcher */
+  .tabs{ display:flex; gap:0; margin-bottom:32px; border-bottom:1px solid var(--border); }
+  .tab{
+    flex:1; padding:10px; text-align:center; font-size:0.7rem; letter-spacing:0.14em;
+    text-transform:uppercase; cursor:pointer; color:var(--text-dim);
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+    transition:color 0.2s, border-color 0.2s;
+  }
+  .tab.active{ color:var(--accent); border-color:var(--accent); }
+
+  /* Form */
+  .form-group{ margin-bottom:18px; }
+  label{ display:block; font-size:0.58rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:7px; }
+  input{
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:11px 14px; font-family:'Space Mono',monospace;
+    font-size:0.82rem; color:var(--text); outline:none;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus{ border-color:var(--accent2); box-shadow:0 0 0 3px rgba(126,184,200,0.12); }
+  input.error{ border-color:var(--wrong); }
+
+  .submit-btn{
+    width:100%; padding:13px; background:var(--accent); color:var(--bg);
+    border:none; border-radius:8px; font-family:'Space Mono',monospace;
+    font-size:0.78rem; font-weight:700; letter-spacing:0.12em; cursor:pointer;
+    margin-top:6px; transition:opacity 0.2s, transform 0.15s;
+  }
+  .submit-btn:hover{ opacity:0.88; transform:translateY(-1px); }
+  .submit-btn:active{ transform:translateY(0); }
+  .submit-btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
+
+  /* Error / success messages */
+  .msg{
+    padding:10px 14px; border-radius:7px; font-size:0.68rem;
+    margin-bottom:18px; display:none; line-height:1.5;
+  }
+  .msg.error  { background:rgba(224,90,90,0.12);  border:1px solid var(--wrong);  color:var(--wrong);  display:block; }
+  .msg.success{ background:rgba(90,224,160,0.12); border:1px solid var(--right); color:var(--right); display:block; }
+
+  /* Spinner */
+  .spinner{
+    display:inline-block; width:14px; height:14px;
+    border:2px solid rgba(10,10,15,0.4); border-top-color:var(--bg);
+    border-radius:50%; animation:spin 0.6s linear infinite; vertical-align:middle; margin-right:6px;
+  }
+  @keyframes spin{ to{transform:rotate(360deg)} }
+
+  /* Divider */
+  .divider{
+    display:flex; align-items:center; gap:12px;
+    font-size:0.6rem; color:var(--text-dim); margin:22px 0;
+  }
+  .divider::before,.divider::after{ content:''; flex:1; height:1px; background:var(--border); }
+
+  /* Level picker (register only) */
+  .level-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+  .level-card{
+    border:1px solid var(--border); border-radius:10px; padding:14px;
+    cursor:pointer; transition:all 0.2s; background:var(--surface2);
+  }
+  .level-card:hover{ border-color:var(--accent2); }
+  .level-card.selected{ border-color:var(--accent); background:rgba(200,169,110,0.08); }
+  .level-card input[type=radio]{ display:none; }
+  .level-name{ font-size:0.75rem; font-weight:700; margin-bottom:4px; }
+  .level-card.selected .level-name{ color:var(--accent); }
+  .level-desc{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  @media(max-width:480px){
+    .card{ padding:32px 24px; margin:16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Animated background keys -->
+<div class="bg-keys" id="bgKeys"></div>
+
+<div class="card">
+  <div class="logo">Piano Coach</div>
+  <div class="logo-sub">AI-Powered Practice System</div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('login')">Sign In</div>
+    <div class="tab"        onclick="showTab('register')">Register</div>
+  </div>
+
+  <!-- ── LOGIN PANEL ── -->
+  <div class="panel active" id="loginPanel">
+    <div class="msg" id="loginMsg"></div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="submit-btn" id="loginBtn" onclick="doLogin()">SIGN IN</button>
+
+    <div class="divider">or</div>
+    <div style="text-align:center;font-size:0.65rem;color:var(--text-dim);">
+      No account? <span style="color:var(--accent);cursor:pointer;" onclick="showTab('register')">Register here</span>
+    </div>
+  </div>
+
+  <!-- ── REGISTER PANEL ── -->
+  <div class="panel" id="registerPanel">
+    <div class="msg" id="registerMsg"></div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="regUsername" placeholder="pianoplayer99" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="regPass" placeholder="Min. 6 characters" autocomplete="new-password">
+    </div>
+
+    <label style="font-size:0.58rem;letter-spacing:0.2em;color:var(--text-dim);text-transform:uppercase;display:block;margin-bottom:10px;">Starting Level</label>
+    <div class="level-grid">
+      <label class="level-card selected" id="lvlBegCard">
+        <input type="radio" name="level" value="beginner" checked onchange="selectLevel('beginner')">
+        <div class="level-name">Beginner</div>
+        <div class="level-desc">YIN + CNN · single notes · forgiving pitch</div>
+      </label>
+      <label class="level-card" id="lvlIntCard">
+        <input type="radio" name="level" value="intermediate" onchange="selectLevel('intermediate')">
+        <div class="level-name">Intermediate</div>
+        <div class="level-desc">CNN only mode · polyphonic · tighter tolerance</div>
+      </label>
+    </div>
+
+    <button class="submit-btn" id="registerBtn" onclick="doRegister()">CREATE ACCOUNT</button>
+
+    <div class="divider">or</div>
+    <div style="text-align:center;font-size:0.65rem;color:var(--text-dim);">
+      Already registered? <span style="color:var(--accent);cursor:pointer;" onclick="showTab('login')">Sign in</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:5000/api';
+let selectedLevel = 'beginner';
+
+// ── Build background keys ──
+const bgKeys = document.getElementById('bgKeys');
+for(let i=0;i<30;i++){
+  const k=document.createElement('div'); k.className='bg-key';
+  bgKeys.appendChild(k);
+}
+
+// ── Tab switching ──
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>
+    t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('loginPanel').classList.toggle('active',    tab==='login');
+  document.getElementById('registerPanel').classList.toggle('active', tab==='register');
+  clearMessages();
+}
+
+function clearMessages(){
+  ['loginMsg','registerMsg'].forEach(id=>{
+    const el=document.getElementById(id); el.className='msg'; el.textContent='';
+  });
+}
+
+function showMsg(id, type, text){
+  const el=document.getElementById(id); el.className='msg '+type; el.textContent=text;
+}
+
+function setLoading(btnId, loading, label){
+  const btn=document.getElementById(btnId);
+  btn.disabled=loading;
+  btn.innerHTML=loading?`<span class="spinner"></span> PLEASE WAIT…`:label;
+}
+
+function selectLevel(level){
+  selectedLevel=level;
+  document.getElementById('lvlBegCard').classList.toggle('selected',level==='beginner');
+  document.getElementById('lvlIntCard').classList.toggle('selected',level==='intermediate');
+}
+
+// Enter key submits
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  if(document.getElementById('loginPanel').classList.contains('active'))    doLogin();
+  else doRegister();
+});
+
+// ── LOGIN ──
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass =document.getElementById('loginPass').value;
+  if(!email||!pass){ showMsg('loginMsg','error','Please fill in all fields.'); return; }
+
+  setLoading('loginBtn',true,'SIGN IN');
+  try{
+    const r=await fetch(API+'/login',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass})
+    });
+    const d=await r.json();
+    if(!r.ok){ showMsg('loginMsg','error',d.error||'Login failed.'); return; }
+    // Save token + user
+    localStorage.setItem('pc_token', d.token);
+    localStorage.setItem('pc_user',  JSON.stringify(d.user));
+    showMsg('loginMsg','success','Welcome back, '+d.user.username+'! Redirecting…');
+    setTimeout(()=>window.location.href='dashboard.html', 900);
+  }catch(e){
+    showMsg('loginMsg','error','Cannot reach server. Is app.py running?');
+  }finally{
+    setLoading('loginBtn',false,'SIGN IN');
+  }
+}
+
+// ── REGISTER ──
+async function doRegister(){
+  const username=document.getElementById('regUsername').value.trim();
+  const email   =document.getElementById('regEmail').value.trim();
+  const pass    =document.getElementById('regPass').value;
+  if(!username||!email||!pass){ showMsg('registerMsg','error','Please fill in all fields.'); return; }
+  if(pass.length<6){ showMsg('registerMsg','error','Password must be at least 6 characters.'); return; }
+
+  setLoading('registerBtn',true,'CREATE ACCOUNT');
+  try{
+    const r=await fetch(API+'/register',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username,email,password:pass,level:selectedLevel})
+    });
+    const d=await r.json();
+    if(!r.ok){ showMsg('registerMsg','error',d.error||'Registration failed.'); return; }
+    localStorage.setItem('pc_token', d.token);
+    localStorage.setItem('pc_user',  JSON.stringify(d.user));
+    showMsg('registerMsg','success','Account created! Redirecting…');
+    setTimeout(()=>window.location.href='dashboard.html', 900);
+  }catch(e){
+    showMsg('registerMsg','error','Cannot reach server. Is app.py running?');
+  }finally{
+    setLoading('registerBtn',false,'CREATE ACCOUNT');
+  }
+}
+
+// ── If already logged in, skip to dashboard ──
+if(localStorage.getItem('pc_token')) window.location.href='dashboard.html';
+</script>
+</body>
+</html>

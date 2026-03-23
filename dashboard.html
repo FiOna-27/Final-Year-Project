@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; }
+  body::before{
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:1000; opacity:0.4;
+  }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 32px; border-bottom:1px solid var(--border);
+    background:var(--surface); position:sticky; top:0; z-index:100;
+  }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+  .logo span{ font-size:0.62rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .header-right{ display:flex; align-items:center; gap:14px; }
+  .user-chip{
+    display:flex; align-items:center; gap:8px; padding:6px 14px;
+    background:var(--surface2); border:1px solid var(--border); border-radius:20px;
+    font-size:0.68rem;
+  }
+  .user-avatar{
+    width:26px; height:26px; border-radius:50%; background:var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; font-weight:700; color:var(--bg);
+  }
+  .logout-btn{
+    padding:6px 14px; background:transparent; border:1px solid var(--border);
+    border-radius:6px; color:var(--text-dim); font-family:'Space Mono',monospace;
+    font-size:0.65rem; cursor:pointer; transition:all 0.2s;
+  }
+  .logout-btn:hover{ border-color:var(--wrong); color:var(--wrong); }
+
+  main{ max-width:900px; margin:0 auto; padding:32px 24px; }
+
+  /* Welcome banner */
+  .welcome-banner{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:28px 32px; margin-bottom:24px;
+    display:flex; align-items:center; gap:24px;
+    animation:fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp{ from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .welcome-avatar{
+    width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Playfair Display',serif; font-size:1.8rem; color:var(--bg); flex-shrink:0;
+  }
+  .welcome-text h1{ font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--accent); margin-bottom:4px; }
+  .welcome-text p{ font-size:0.68rem; color:var(--text-dim); line-height:1.7; }
+
+  /* Level section */
+  .section-title{
+    font-size:0.6rem; letter-spacing:0.22em; color:var(--text-dim); text-transform:uppercase;
+    margin-bottom:14px; margin-top:28px;
+  }
+
+  .level-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px; }
+  .level-card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:22px 24px; cursor:pointer; transition:all 0.25s;
+    position:relative;
+  }
+  .level-card:hover{ border-color:var(--accent2); transform:translateY(-2px); }
+  .level-card.active{
+    border-color:var(--accent); background:rgba(200,169,110,0.06);
+  }
+  .level-card.active::after{
+    content:'CURRENT'; position:absolute; top:14px; right:14px;
+    font-size:0.5rem; letter-spacing:0.18em; color:var(--accent);
+    background:rgba(200,169,110,0.15); padding:3px 8px; border-radius:4px;
+  }
+  .level-icon{ font-size:1.6rem; margin-bottom:10px; }
+  .level-name{ font-size:0.88rem; font-weight:700; margin-bottom:6px; }
+  .level-card.active .level-name{ color:var(--accent); }
+  .level-desc{ font-size:0.62rem; color:var(--text-dim); line-height:1.7; }
+  .level-features{ margin-top:12px; display:flex; flex-direction:column; gap:5px; }
+  .feat{
+    font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:7px;
+  }
+  .feat::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--border); flex-shrink:0; }
+  .feat.on{ color:var(--text); }
+  .feat.on::before{ background:var(--right); }
+
+  /* Quick actions */
+  .action-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
+  .action-card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:22px 20px; text-decoration:none; color:var(--text);
+    transition:all 0.25s; display:flex; flex-direction:column; gap:10px;
+  }
+  .action-card:hover{ border-color:var(--accent); transform:translateY(-2px); }
+  .action-icon{ font-size:1.5rem; }
+  .action-name{ font-size:0.78rem; font-weight:700; }
+  .action-desc{ font-size:0.6rem; color:var(--text-dim); line-height:1.6; }
+  .action-tag{
+    display:inline-block; font-size:0.5rem; letter-spacing:0.12em; padding:3px 8px;
+    border-radius:4px; margin-top:auto; align-self:flex-start;
+  }
+  .tag-beginner  { background:rgba(90,224,160,0.12); color:var(--right); }
+  .tag-intermediate{ background:rgba(126,184,200,0.12); color:var(--accent2); }
+  .tag-both      { background:rgba(200,169,110,0.12); color:var(--accent); }
+
+  /* Server status */
+  .status-bar{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:12px 18px; display:flex; align-items:center; gap:12px; font-size:0.65rem;
+  }
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; }
+  .status-dot.online { background:var(--right);  box-shadow:0 0 8px var(--right); }
+  .status-dot.offline{ background:var(--wrong); }
+  .status-text{ color:var(--text-dim); }
+  .status-detail{ color:var(--text-dim); font-size:0.58rem; margin-left:auto; }
+
+  /* Level change toast */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--surface); border:1px solid var(--right); color:var(--right);
+    padding:10px 20px; border-radius:8px; font-size:0.68rem; z-index:999;
+    transition:transform 0.3s ease; pointer-events:none;
+  }
+  .toast.show{ transform:translateX(-50%) translateY(0); }
+
+  @media(max-width:640px){
+    .level-grid{ grid-template-columns:1fr; }
+    .action-grid{ grid-template-columns:1fr 1fr; }
+    header{ padding:12px 16px; }
+    main{ padding:20px 14px; }
+    .welcome-banner{ flex-direction:column; text-align:center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>DASHBOARD</span></div>
+  <div class="header-right">
+    <div class="user-chip">
+      <div class="user-avatar" id="headerAvatar">?</div>
+      <span id="headerUsername">Loading…</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Welcome -->
+  <div class="welcome-banner">
+    <div class="welcome-avatar" id="avatarLetter">?</div>
+    <div class="welcome-text">
+      <h1 id="welcomeName">Welcome back!</h1>
+      <p id="welcomeSub">Loading your profile…</p>
+    </div>
+  </div>
+
+  <!-- Server status -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">Checking server…</span>
+    <span class="status-detail" id="statusDetail"></span>
+  </div>
+
+  <!-- Level selector -->
+  <div class="section-title">Your Practice Level</div>
+  <div class="level-grid">
+
+    <div class="level-card" id="cardBeginner" onclick="setLevel('beginner')">
+      <div class="level-icon">🌱</div>
+      <div class="level-name">Beginner</div>
+      <div class="level-desc">Perfect for learning individual notes and simple melodies.</div>
+      <div class="level-features">
+        <div class="feat on">YIN + CNN pitch detection</div>
+        <div class="feat on">±2 semitone forgiveness</div>
+        <div class="feat on">Octave differences forgiven</div>
+        <div class="feat on">Onset detection (no jitter)</div>
+        <div class="feat">CNN-only polyphonic mode</div>
+      </div>
+    </div>
+
+    <div class="level-card" id="cardIntermediate" onclick="setLevel('intermediate')">
+      <div class="level-icon">🎹</div>
+      <div class="level-name">Intermediate</div>
+      <div class="level-desc">For players ready for tighter accuracy and chord recognition.</div>
+      <div class="level-features">
+        <div class="feat on">YIN + CNN pitch detection</div>
+        <div class="feat on">±2 semitone forgiveness</div>
+        <div class="feat on">Octave differences forgiven</div>
+        <div class="feat on">Onset detection (no jitter)</div>
+        <div class="feat on">CNN-only polyphonic mode (toggle)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Quick actions -->
+  <div class="section-title">Practice</div>
+  <div class="action-grid">
+
+    <a class="action-card" id="actionPractice" href="piano-coach-v3.5.html">
+      <div class="action-icon">🎵</div>
+      <div class="action-name">Start Practice</div>
+      <div class="action-desc">Free play or play-along with 10 songs. Onset-gated detection.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+    <div class="action-card" id="actionCnnOnly" style="opacity:0.4;cursor:not-allowed;" onclick="cnnOnlyClick()">
+      <div class="action-icon">🧠</div>
+      <div class="action-name">CNN-Only Mode</div>
+      <div class="action-desc">Skip YIN entirely. Pure neural network detection. Great for chords.</div>
+      <span class="action-tag tag-intermediate">INTERMEDIATE</span>
+    </div>
+
+    <a class="action-card" href="analytics.html">
+      <div class="action-icon">📊</div>
+      <div class="action-name">Analytics</div>
+      <div class="action-desc">Practice history, accuracy trends and daily streak.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+    <a class="action-card" href="sheetmusic.html">
+      <div class="action-icon">🎼</div>
+      <div class="action-name">Sheet Music</div>
+      <div class="action-desc">Read notation for all 10 songs before you play.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+    <a class="action-card" href="analyser.html">
+      <div class="action-icon">🔍</div>
+      <div class="action-name">Audio Analyser</div>
+      <div class="action-desc">Upload a recording and check how well it matches a reference song.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+  </div>
+
+</main>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:5000/api';
+
+// ── Auth guard ──
+const token = localStorage.getItem('pc_token');
+if(!token) window.location.href = 'login.html';
+
+let currentUser = null;
+try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
+
+// ── Render user info immediately from cache ──
+function renderUser(user){
+  if(!user) return;
+  const initial = user.username[0].toUpperCase();
+  document.getElementById('headerAvatar').textContent   = initial;
+  document.getElementById('headerUsername').textContent = user.username;
+  document.getElementById('avatarLetter').textContent   = initial;
+  document.getElementById('welcomeName').textContent    = `Welcome back, ${user.username}!`;
+  document.getElementById('welcomeSub').textContent     =
+    `Level: ${user.level.charAt(0).toUpperCase()+user.level.slice(1)} · ${user.email}`;
+  applyLevel(user.level);
+}
+
+function applyLevel(level){
+  document.getElementById('cardBeginner').classList.toggle('active',     level==='beginner');
+  document.getElementById('cardIntermediate').classList.toggle('active', level==='intermediate');
+
+  const cnnCard = document.getElementById('actionCnnOnly');
+  if(level==='intermediate'){
+    cnnCard.style.opacity='1';
+    cnnCard.style.cursor='pointer';
+    cnnCard.onclick=()=>openCnnOnly();
+  } else {
+    cnnCard.style.opacity='0.4';
+    cnnCard.style.cursor='not-allowed';
+    cnnCard.onclick=cnnOnlyClick;
+  }
+}
+
+if(currentUser) renderUser(currentUser);
+
+// ── Fetch fresh user data ──
+async function fetchMe(){
+  try{
+    const r = await fetch(API+'/me', { headers:{'Authorization':'Bearer '+token} });
+    if(r.status===401){ logout(); return; }
+    const d = await r.json();
+    currentUser = d.user;
+    localStorage.setItem('pc_user', JSON.stringify(currentUser));
+    renderUser(currentUser);
+  }catch(e){ /* server offline — use cached */ }
+}
+fetchMe();
+
+// ── Server status ──
+async function checkServer(){
+  try{
+    const r = await fetch(API+'/status', {signal:AbortSignal.timeout(2000)});
+    const d = await r.json();
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const det  = document.getElementById('statusDetail');
+    dot.className  = 'status-dot online';
+    text.textContent = 'Inference server online';
+    const mi = d.model||{};
+    det.textContent = mi.epoch ? `Model epoch ${mi.epoch} · F1 ${mi.f1}` : 'No model loaded';
+  }catch(e){
+    document.getElementById('statusDot').className  = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Server offline — run app.py to enable CNN';
+    document.getElementById('statusDetail').textContent = '';
+  }
+}
+checkServer();
+
+// ── Level change ──
+async function setLevel(level){
+  if(!currentUser || currentUser.level===level) return;
+  try{
+    const r = await fetch(API+'/me/level',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({level})
+    });
+    if(!r.ok){ showToast('Failed to update level.'); return; }
+    const d = await r.json();
+    currentUser = d.user;
+    localStorage.setItem('pc_user', JSON.stringify(currentUser));
+    renderUser(currentUser);
+    showToast(`Level changed to ${level.charAt(0).toUpperCase()+level.slice(1)} ✓`);
+  }catch(e){ showToast('Cannot reach server.'); }
+}
+
+function cnnOnlyClick(){
+  showToast('CNN-Only mode requires Intermediate level.');
+}
+function openCnnOnly(){
+  // Pass flag via sessionStorage so the app reads it
+  sessionStorage.setItem('pc_cnn_only','1');
+  window.location.href='piano-coach-v3.5.html';
+}
+
+// ── Logout ──
+function logout(){
+  localStorage.removeItem('pc_token');
+  localStorage.removeItem('pc_user');
+  sessionStorage.clear();
+  window.location.href='login.html';
+}
+
+// ── Toast ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

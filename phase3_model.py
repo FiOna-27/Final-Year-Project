@@ -1,0 +1,108 @@
+"""
+phase3_model.py — Piano Transcription CNN
+==========================================
+Imported by phase4_train.py.
+
+Architecture:
+    Input : (batch, 1, N_MELS, N_FRAMES)   — 1-channel mel spectrogram window
+    Output: (batch, 88)                     — sigmoid probabilities, one per piano key
+
+Place this file in the SAME folder as phase4_train.py.
+"""
+
+import torch
+import torch.nn as nn
+
+
+class ConvBlock(nn.Module):
+    """Conv2d → BatchNorm → ReLU → optional MaxPool."""
+    def __init__(self, in_ch, out_ch, pool=True):
+        super().__init__()
+        layers = [
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        ]
+        if pool:
+            layers.append(nn.MaxPool2d(2, 2))
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class PianoTranscriptionCNN(nn.Module):
+    """
+    Small CNN for frame-level piano note transcription.
+
+    Takes a mel spectrogram window and outputs 88 note probabilities.
+    Works with any (N_MELS, N_FRAMES) size — the adaptive pool before the
+    fully-connected head normalises the spatial dimensions.
+
+    Default config matches build_dataset.py: N_MELS=64, N_FRAMES=11.
+    """
+
+    def __init__(self, n_mels: int = 64, n_frames: int = 11, n_notes: int = 88):
+        super().__init__()
+        self.n_mels   = n_mels
+        self.n_frames = n_frames
+        self.n_notes  = n_notes
+
+        # ── Feature extractor ──────────────────────────────────────────────
+        self.features = nn.Sequential(
+            ConvBlock(1,  32, pool=True),   # → (32, M/2, F/2)
+            ConvBlock(32, 64, pool=True),   # → (64, M/4, F/4)
+            ConvBlock(64, 128, pool=False), # → (128, M/4, F/4)  no pool to keep freq detail
+            nn.Dropout2d(0.25),
+        )
+
+        # Adaptive pool collapses spatial dims to (4, 4) regardless of input size
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
+
+        # ── Classifier head ────────────────────────────────────────────────
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(128 * 4 * 4, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(256, n_notes),
+            nn.Sigmoid(),          # multi-label: each note independent
+        )
+
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias,   0)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.zeros_(m.bias)
+
+    def forward(self, x):
+        # x: (B, 1, N_MELS, N_FRAMES)
+        x = self.features(x)         # (B, 128, H, W)
+        x = self.adaptive_pool(x)    # (B, 128, 4, 4)
+        x = self.classifier(x)       # (B, 88)
+        return x
+
+
+# ─── Quick shape check ────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    model = PianoTranscriptionCNN(n_mels=64, n_frames=11)
+    total = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"PianoTranscriptionCNN — {total:,} trainable parameters")
+
+    dummy = torch.zeros(4, 1, 64, 11)   # batch of 4 windows
+    out   = model(dummy)
+    print(f"Input:  {tuple(dummy.shape)}")
+    print(f"Output: {tuple(out.shape)}   (expected: (4, 88))")
+    assert out.shape == (4, 88), "Shape mismatch!"
+    assert out.min() >= 0 and out.max() <= 1, "Sigmoid out of [0,1]!"
+    print("✅ Shape check passed.")
