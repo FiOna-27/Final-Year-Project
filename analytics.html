@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; }
+  body::before{
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:1000; opacity:0.4;
+  }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 32px; border-bottom:1px solid var(--border);
+    background:var(--surface); position:sticky; top:0; z-index:100;
+  }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); }
+  .logo span{ font-size:0.62rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .header-right{ display:flex; gap:10px; align-items:center; }
+  .nav-btn{
+    padding:6px 14px; border-radius:6px; border:1px solid var(--border);
+    background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace;
+    font-size:0.65rem; letter-spacing:0.08em; text-decoration:none; cursor:pointer;
+    transition:all 0.2s;
+  }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  main{ max-width:980px; margin:0 auto; padding:28px 24px; }
+
+  /* Loading state */
+  .loading{
+    display:flex; align-items:center; justify-content:center;
+    height:60vh; flex-direction:column; gap:14px; color:var(--text-dim);
+    font-size:0.72rem; letter-spacing:0.1em;
+  }
+  .spinner{
+    width:28px; height:28px; border:2px solid var(--border);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin 0.7s linear infinite;
+  }
+  @keyframes spin{ to{transform:rotate(360deg)} }
+
+  /* ── Top stat cards ── */
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .stat-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px; animation:fadeUp 0.4s ease both;
+  }
+  .stat-card:nth-child(2){ animation-delay:0.06s; }
+  .stat-card:nth-child(3){ animation-delay:0.12s; }
+  .stat-card:nth-child(4){ animation-delay:0.18s; }
+  @keyframes fadeUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .stat-label{ font-size:0.55rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .stat-value{ font-family:'Playfair Display',serif; font-size:2.2rem; line-height:1; }
+  .stat-value.gold  { color:var(--accent); }
+  .stat-value.green { color:var(--right); }
+  .stat-value.blue  { color:var(--accent2); }
+  .stat-value.warn  { color:var(--warn); }
+  .stat-sub{ font-size:0.58rem; color:var(--text-dim); margin-top:5px; }
+
+  /* ── Streak banner ── */
+  .streak-banner{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px 24px; margin-bottom:24px;
+    display:flex; align-items:center; gap:20px;
+    animation:fadeUp 0.4s 0.1s ease both;
+  }
+  .streak-flame{ font-size:2.4rem; flex-shrink:0; }
+  .streak-info{ flex:1; }
+  .streak-number{ font-family:'Playfair Display',serif; font-size:2.8rem; color:var(--accent); line-height:1; }
+  .streak-label{ font-size:0.62rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-top:2px; }
+  .streak-sub{ font-size:0.65rem; color:var(--text-dim); margin-top:6px; }
+  /* Calendar dots */
+  .streak-dots{ display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; max-width:260px; }
+  .streak-dot{
+    width:18px; height:18px; border-radius:4px; background:var(--border);
+    position:relative; cursor:default;
+  }
+  .streak-dot.practiced{ background:var(--accent); }
+  .streak-dot.today{ outline:2px solid var(--accent2); outline-offset:1px; }
+  .streak-dot[data-tip]:hover::after{
+    content:attr(data-tip); position:absolute; bottom:calc(100% + 5px); left:50%;
+    transform:translateX(-50%); background:var(--surface2); border:1px solid var(--border);
+    border-radius:5px; padding:3px 7px; font-size:0.5rem; white-space:nowrap; z-index:10;
+    pointer-events:none; color:var(--text);
+  }
+
+  /* ── Charts section ── */
+  .section-title{
+    font-size:0.58rem; letter-spacing:0.22em; color:var(--text-dim);
+    text-transform:uppercase; margin-bottom:12px; margin-top:8px;
+  }
+  .chart-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px 22px; margin-bottom:20px;
+    animation:fadeUp 0.4s 0.2s ease both;
+  }
+  .chart-title{ font-size:0.68rem; font-weight:700; margin-bottom:16px; color:var(--text); }
+  .chart-title span{ color:var(--text-dim); font-weight:400; font-size:0.6rem; margin-left:8px; }
+  .chart-wrap{ position:relative; height:200px; }
+
+  /* ── Song breakdown ── */
+  .song-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .song-row{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:13px 16px; display:flex; align-items:center; gap:12px;
+    animation:fadeUp 0.4s 0.25s ease both;
+  }
+  .song-plays{
+    font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--accent);
+    min-width:36px; text-align:center; flex-shrink:0;
+  }
+  .song-info{ flex:1; overflow:hidden; }
+  .song-name{ font-size:0.72rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .song-acc{ font-size:0.58rem; color:var(--text-dim); margin-top:3px; }
+  .acc-bar-wrap{ height:3px; background:var(--border); border-radius:2px; margin-top:5px; }
+  .acc-bar{ height:3px; border-radius:2px; transition:width 0.8s ease; }
+
+  /* ── Recent sessions table ── */
+  .recent-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; animation:fadeUp 0.4s 0.3s ease both;
+  }
+  .recent-header{
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    font-size:0.65rem; font-weight:700; display:grid;
+    grid-template-columns:1fr 80px 60px 60px 90px;
+    color:var(--text-dim); letter-spacing:0.1em;
+  }
+  .recent-row{
+    padding:11px 18px; border-bottom:1px solid var(--border); display:grid;
+    grid-template-columns:1fr 80px 60px 60px 90px;
+    font-size:0.65rem; transition:background 0.15s;
+  }
+  .recent-row:last-child{ border-bottom:none; }
+  .recent-row:hover{ background:var(--surface2); }
+  .acc-pill{
+    display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.58rem; font-weight:700;
+  }
+  .acc-high { background:rgba(90,224,160,0.15); color:var(--right); }
+  .acc-mid  { background:rgba(224,168,90,0.15);  color:var(--warn); }
+  .acc-low  { background:rgba(224,90,90,0.15);   color:var(--wrong); }
+
+  /* empty state */
+  .empty{
+    text-align:center; padding:48px 24px; color:var(--text-dim); font-size:0.72rem; line-height:2;
+  }
+  .empty a{ color:var(--accent); text-decoration:none; }
+
+  @media(max-width:680px){
+    .stat-grid{ grid-template-columns:1fr 1fr; }
+    .song-grid{ grid-template-columns:1fr; }
+    .recent-header,.recent-row{ grid-template-columns:1fr 60px 60px; }
+    .recent-header :nth-child(4),.recent-row :nth-child(4),
+    .recent-header :nth-child(5),.recent-row :nth-child(5){ display:none; }
+    header{ padding:12px 16px; }
+    main{ padding:16px 12px; }
+    .streak-dots{ display:none; }
+  }
+</style>
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <script src="api-config.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>ANALYTICS</span></div>
+  <div class="header-right">
+    <a class="nav-btn" href="piano-coach-v3.5.html">🎹 Practice</a>
+    <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+  </div>
+</header>
+
+<main id="mainContent">
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+    LOADING YOUR STATS…
+  </div>
+</main>
+
+<script>
+const API = getApiUrl();
+const token = localStorage.getItem('pc_token');
+if(!token) window.location.href = 'login.html';
+
+let currentUser = null;
+try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
+
+// ── Fetch analytics ──────────────────────────────────────────────────────────
+async function load(){
+  try{
+    const r = await fetch(API+'/analytics',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(r.status===401){ window.location.href='login.html'; return; }
+    const d = await r.json();
+    render(d);
+  }catch(e){
+    document.getElementById('mainContent').innerHTML=
+      `<div class="empty">Cannot reach server.<br>Make sure <strong>app.py</strong> is running.</div>`;
+  }
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render(d){
+  const { sessions_by_day, streak, totals, song_breakdown, recent } = d;
+
+  if(totals.sessions===0){
+    document.getElementById('mainContent').innerHTML=`
+      <div class="empty">
+        No practice sessions yet!<br>
+        <a href="piano-coach-v3.5.html">Play a song</a> to start building your history.
+      </div>`;
+    return;
+  }
+
+  document.getElementById('mainContent').innerHTML = `
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-value gold">${totals.sessions}</div>
+        <div class="stat-sub">songs completed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Overall Accuracy</div>
+        <div class="stat-value green">${totals.overall_accuracy}%</div>
+        <div class="stat-sub">${totals.correct} correct · ${totals.wrong} wrong</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Daily Streak</div>
+        <div class="stat-value ${streak>=7?'gold':streak>=3?'green':'blue'}">${streak}</div>
+        <div class="stat-sub">${streak===1?'day':'days'} in a row</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Songs Practiced</div>
+        <div class="stat-value blue">${song_breakdown.length}</div>
+        <div class="stat-sub">unique pieces</div>
+      </div>
+    </div>
+
+    <!-- Streak banner -->
+    <div class="streak-banner">
+      <div class="streak-flame">${streak>=7?'🔥':streak>=3?'✨':'🎹'}</div>
+      <div class="streak-info">
+        <div class="streak-number">${streak}</div>
+        <div class="streak-label">Day${streak!==1?'s':''} Practice Streak</div>
+        <div class="streak-sub">${streakMessage(streak)}</div>
+      </div>
+      <div class="streak-dots" id="calDots"></div>
+    </div>
+
+    <!-- Pieces per day chart -->
+    <div class="section-title">Practice Activity</div>
+    <div class="chart-card">
+      <div class="chart-title">Pieces practiced per day <span>last 30 days</span></div>
+      <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+
+    <!-- Accuracy over time -->
+    <div class="chart-card">
+      <div class="chart-title">Average accuracy per day <span>last 30 days</span></div>
+      <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+    </div>
+
+    <!-- Song breakdown -->
+    <div class="section-title">Song Breakdown</div>
+    <div class="song-grid" id="songGrid"></div>
+
+    <!-- Recent sessions -->
+    <div class="section-title">Recent Sessions</div>
+    <div class="recent-card">
+      <div class="recent-header">
+        <span>Song</span><span>Accuracy</span><span>Correct</span><span>Wrong</span><span>Date</span>
+      </div>
+      <div id="recentRows"></div>
+    </div>
+  `;
+
+  buildCalendar(sessions_by_day);
+  buildBarChart(sessions_by_day);
+  buildLineChart(sessions_by_day);
+  buildSongGrid(song_breakdown);
+  buildRecentRows(recent);
+}
+
+function streakMessage(n){
+  if(n===0) return 'Practice today to start your streak!';
+  if(n===1) return 'Great start — come back tomorrow to keep it going.';
+  if(n<7)   return `${n} days strong — keep the momentum!`;
+  if(n<14)  return `A full week! You're building a real habit.`;
+  return `${n} days — incredible dedication! 🏆`;
+}
+
+// ── Calendar dots (last 30 days) ─────────────────────────────────────────────
+function buildCalendar(days){
+  const wrap = document.getElementById('calDots');
+  const today = new Date().toISOString().slice(0,10);
+  days.forEach(d=>{
+    const dot = document.createElement('div');
+    dot.className = 'streak-dot'
+      + (d.count>0?' practiced':'')
+      + (d.date===today?' today':'');
+    const label = d.date.slice(5); // MM-DD
+    dot.setAttribute('data-tip', `${label}: ${d.count} session${d.count!==1?'s':''}`);
+    wrap.appendChild(dot);
+  });
+}
+
+// ── Chart.js shared options ──────────────────────────────────────────────────
+const CHART_DEFAULTS = {
+  plugins:{ legend:{ display:false }, tooltip:{
+    backgroundColor:'#1a1a24', borderColor:'#2a2a3a', borderWidth:1,
+    titleColor:'#e8e8f0', bodyColor:'#6a6a8a',
+    titleFont:{family:'Space Mono', size:11},
+    bodyFont: {family:'Space Mono', size:10},
+    padding:10,
+  }},
+  scales:{
+    x:{ grid:{color:'rgba(42,42,58,0.6)'}, ticks:{color:'#6a6a8a', font:{family:'Space Mono',size:9}, maxTicksLimit:10} },
+    y:{ grid:{color:'rgba(42,42,58,0.6)'}, ticks:{color:'#6a6a8a', font:{family:'Space Mono',size:9}} },
+  },
+  animation:{ duration:700 },
+  responsive:true, maintainAspectRatio:false,
+};
+
+// ── Bar chart: pieces per day ─────────────────────────────────────────────────
+function buildBarChart(days){
+  const labels = days.map(d=>d.date.slice(5));   // MM-DD
+  const counts = days.map(d=>d.count);
+  new Chart(document.getElementById('barChart'), {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        data: counts,
+        backgroundColor: counts.map(c=>c>0?'rgba(200,169,110,0.7)':'rgba(42,42,58,0.4)'),
+        borderColor:     counts.map(c=>c>0?'rgba(200,169,110,1)':'rgba(42,42,58,0.6)'),
+        borderWidth:1, borderRadius:3,
+      }]
+    },
+    options:{
+      ...CHART_DEFAULTS,
+      scales:{
+        ...CHART_DEFAULTS.scales,
+        y:{ ...CHART_DEFAULTS.scales.y, beginAtZero:true, ticks:{...CHART_DEFAULTS.scales.y.ticks, stepSize:1} }
+      },
+      plugins:{
+        ...CHART_DEFAULTS.plugins,
+        tooltip:{
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks:{
+            title: items => items[0].label,
+            label: item => ` ${item.raw} session${item.raw!==1?'s':''}`,
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Line chart: avg accuracy per day ─────────────────────────────────────────
+function buildLineChart(days){
+  const active = days.filter(d=>d.count>0);
+  const labels = active.map(d=>d.date.slice(5));
+  const accs   = active.map(d=>d.avg_accuracy);
+  new Chart(document.getElementById('lineChart'), {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        data: accs,
+        borderColor:'#5ae0a0', backgroundColor:'rgba(90,224,160,0.08)',
+        borderWidth:2, pointBackgroundColor:'#5ae0a0',
+        pointRadius:4, pointHoverRadius:6, tension:0.35, fill:true,
+      }]
+    },
+    options:{
+      ...CHART_DEFAULTS,
+      scales:{
+        ...CHART_DEFAULTS.scales,
+        y:{ ...CHART_DEFAULTS.scales.y, min:0, max:100,
+            ticks:{...CHART_DEFAULTS.scales.y.ticks,
+              callback:v=>v+'%'} }
+      },
+      plugins:{
+        ...CHART_DEFAULTS.plugins,
+        tooltip:{
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks:{
+            title: items => items[0].label,
+            label: item => ` ${item.raw}% avg accuracy`,
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Song breakdown grid ───────────────────────────────────────────────────────
+function buildSongGrid(songs){
+  const grid = document.getElementById('songGrid');
+  songs.forEach(s=>{
+    const accColor = s.avg_accuracy>=80?'var(--right)':s.avg_accuracy>=50?'var(--warn)':'var(--wrong)';
+    const div = document.createElement('div'); div.className='song-row';
+    div.innerHTML=`
+      <div class="song-plays">${s.plays}</div>
+      <div class="song-info">
+        <div class="song-name">${s.song_name}</div>
+        <div class="song-acc">${s.avg_accuracy}% avg accuracy · ${s.plays} play${s.plays!==1?'s':''}</div>
+        <div class="acc-bar-wrap"><div class="acc-bar" style="width:${s.avg_accuracy}%;background:${accColor}"></div></div>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+// ── Recent sessions rows ──────────────────────────────────────────────────────
+function buildRecentRows(sessions){
+  const wrap = document.getElementById('recentRows');
+  sessions.forEach(s=>{
+    const accClass = s.accuracy>=80?'acc-high':s.accuracy>=50?'acc-mid':'acc-low';
+    const div = document.createElement('div'); div.className='recent-row';
+    div.innerHTML=`
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.song_name}</span>
+      <span><span class="acc-pill ${accClass}">${s.accuracy}%</span></span>
+      <span style="color:var(--right)">${s.correct}</span>
+      <span style="color:var(--wrong)">${s.wrong}</span>
+      <span style="color:var(--text-dim);font-size:0.58rem">${s.played_at||'—'}</span>`;
+    wrap.appendChild(div);
+  });
+}
+
+load();
+</script>
+</body>
+</html>
