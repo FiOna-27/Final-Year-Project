@@ -154,6 +154,11 @@
   .note-chip .oct{ font-size:0.48rem; color:var(--text-dim); line-height:1; }
   .note-chip .timing-tag{ font-size:0.38rem; line-height:1; margin-top:1px; }
   .note-chip.current     { border-color:var(--accent2); color:var(--accent2); box-shadow:0 0 10px rgba(126,184,200,0.35); transform:scale(1.1); }
+  .note-chip.rhythm-active{ animation:rhythmPulse 0.6s ease-in-out infinite; }
+  @keyframes rhythmPulse{
+    0%,100%{ box-shadow:0 0 8px rgba(126,184,200,0.4); border-color:var(--accent2); }
+    50%    { box-shadow:0 0 18px rgba(126,184,200,0.9); border-color:#a8d8e8; }
+  }
   .note-chip.done-correct{ border-color:var(--right); color:var(--right); background:rgba(90,224,160,0.07); }
   .note-chip.done-wrong  { border-color:var(--wrong); color:var(--wrong); background:rgba(224,90,90,0.07); }
   .note-chip.done-missed { border-color:var(--warn); color:var(--warn); background:rgba(224,168,90,0.07); }
@@ -188,6 +193,36 @@
   }
   #sheetScoreContainer svg{ display:block; }
   /* Current-note highlight rect drawn by JS — pure SVG, no extra CSS needed */
+
+  /* ── Song select lock styles ── */
+  #songSelect option:disabled{ color:var(--text-dim); }
+  .song-lock-hint{
+    font-size:0.55rem; letter-spacing:0.1em; color:var(--text-dim);
+    margin-left:8px; display:none;
+  }
+  .song-lock-hint.visible{ display:inline; }
+
+  /* ── Rhythm countdown overlay ── */
+  #countdownOverlay{
+    display:none; position:absolute; inset:0; z-index:50;
+    align-items:center; justify-content:center;
+    background:rgba(10,10,15,0.82); border-radius:12px;
+    flex-direction:column; gap:8px;
+  }
+  #countdownOverlay.visible{ display:flex; }
+  #countdownNum{
+    font-family:'Playfair Display',serif; font-size:5rem; color:var(--accent);
+    line-height:1; animation:cdPulse 1s ease-out;
+  }
+  #countdownLabel{
+    font-size:0.6rem; letter-spacing:0.22em; color:var(--text-dim); text-transform:uppercase;
+  }
+  @keyframes cdPulse{
+    0%  { transform:scale(1.4); opacity:0.4; }
+    40% { transform:scale(1.0); opacity:1;   }
+    100%{ transform:scale(1.0); opacity:1;   }
+  }
+  .score-section{ position:relative; }
 </style>
   <meta name="theme-color" content="#0a0a0f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -308,21 +343,16 @@
   <!-- PLAY ALONG section -->
   <div id="alongSection" class="mode-section">
     <div class="score-section">
+      <!-- Countdown overlay — shown over score-section during rhythm countdown -->
+      <div id="countdownOverlay">
+        <div id="countdownNum">5</div>
+        <div id="countdownLabel">get ready…</div>
+      </div>
       <div class="score-header">
         <div class="score-title">Play Along</div>
         <div class="score-controls">
-          <select id="songSelect" onchange="loadSong()">
-            <option value="cmajor">C Major Scale</option>
-            <option value="twinkle">Twinkle Twinkle</option>
-            <option value="ode">Ode to Joy</option>
-            <option value="canon">Canon in D (excerpt)</option>
-            <option value="happy">Happy Birthday</option>
-            <option value="jingle">Jingle Bells</option>
-            <option value="mary">Mary Had a Little Lamb</option>
-            <option value="furelise">Für Elise (opening)</option>
-            <option value="amazing">Amazing Grace</option>
-            <option value="moonlight">Moonlight Sonata</option>
-          </select>
+          <select id="songSelect" onchange="loadSong()"></select>
+          <span class="song-lock-hint" id="songLockHint">🔒 locked for your level</span>
           <button class="score-btn" id="skipBtn" onclick="skipNote()" style="border-color:var(--warn);color:var(--warn);display:none;">⏭ SKIP</button>
           <button class="score-btn" onclick="resetSong()">↺ RESET</button>
           <button class="score-btn primary" id="startBtn" onclick="togglePlay()">▶ START</button>
@@ -462,17 +492,73 @@ function noteToMidi(n){ const mm=n.match(/([A-G]#?)(\d)/); if(!mm)return 60; ret
 
 // ─── SONGS — each has bpm + beats[] (quarter-note positions, 0-indexed) ───────
 const SONGS={
-  cmajor:  { name:'C Major Scale',        bpm:80,  notes:['C4','D4','E4','F4','G4','A4','B4','C5'],            beats:[0,1,2,3,4,5,6,7] },
-  twinkle: { name:'Twinkle Twinkle',      bpm:100, notes:['C4','C4','G4','G4','A4','A4','G4','F4','F4','E4','E4','D4','D4','C4'], beats:[0,1,2,3,4,5,6,8,9,10,11,12,13,14] },
-  ode:     { name:'Ode to Joy',           bpm:100, notes:['E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','E4','D4','D4'], beats:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14] },
-  canon:   { name:'Canon in D (excerpt)', bpm:90,  notes:['D4','A3','B3','F#3','G3','D3','G3','A3'],            beats:[0,1,2,3,4,5,6,7] },
-  happy:   { name:'Happy Birthday',       bpm:90,  notes:['G3','G3','A3','G3','C4','B3','G3','G3','A3','G3','D4','C4','G3','G3','G4','E4','C4','B3','A3'], beats:[0,0.5,1,2,3,4,4,4.5,5,6,7,8,8,8.5,9,10,11,12,13] },
-  jingle:  { name:'Jingle Bells',         bpm:120, notes:['E4','E4','E4','E4','E4','E4','E4','G4','C4','D4','E4','F4','F4','F4','F4','F4','E4','E4','E4','D4','D4','E4','D4','G4'], beats:[0,1,2,0,1,2,0,1,2,3,4,0,1,2,0,1,2,3,0,1,2,0,1,2].map((v,i,a)=>{ let s=0; for(let j=0;j<i;j++) s+=1; return s; }) },
-  mary:    { name:'Mary Had a Little Lamb',bpm:100,notes:['E4','D4','C4','D4','E4','E4','E4','D4','D4','D4','E4','G4','G4'], beats:[0,1,2,3,4,5,6,7,8,9,10,11,12] },
-  furelise:{ name:'Für Elise (opening)',  bpm:80,  notes:['E5','D#5','E5','D#5','E5','B4','D5','C5','A4'],      beats:[0,0.5,1,1.5,2,3,3.5,4,4.5] },
-  amazing: { name:'Amazing Grace',        bpm:80,  notes:['G3','C4','E4','C4','E4','D4','C4','E4','G4'],        beats:[0,1,2,3,4,5,6,7,8] },
-  moonlight:{name:'Moonlight Sonata',     bpm:60,  notes:['G#3','C#4','E4','G#3','C#4','E4','G#3','C#4','E4','F#3','C#4','E4'], beats:[0,0.33,0.67,1,1.33,1.67,2,2.33,2.67,3,3.33,3.67] },
+  cmajor:  { name:'C Major Scale',        level:'beginner',     bpm:80,  notes:['C4','D4','E4','F4','G4','A4','B4','C5'],            beats:[0,1,2,3,4,5,6,7] },
+  twinkle: { name:'Twinkle Twinkle',      level:'beginner',     bpm:100, notes:['C4','C4','G4','G4','A4','A4','G4','F4','F4','E4','E4','D4','D4','C4'], beats:[0,1,2,3,4,5,6,8,9,10,11,12,13,14] },
+  mary:    { name:'Mary Had a Little Lamb',level:'beginner',    bpm:100, notes:['E4','D4','C4','D4','E4','E4','E4','D4','D4','D4','E4','G4','G4'], beats:[0,1,2,3,4,5,6,7,8,9,10,11,12] },
+  happy:   { name:'Happy Birthday',       level:'beginner',     bpm:90,  notes:['G3','G3','A3','G3','C4','B3','G3','G3','A3','G3','D4','C4','G3','G3','G4','E4','C4','B3','A3'], beats:[0,0.5,1,2,3,4,4,4.5,5,6,7,8,8,8.5,9,10,11,12,13] },
+  jingle:  { name:'Jingle Bells',         level:'beginner',     bpm:120, notes:['E4','E4','E4','E4','E4','E4','E4','G4','C4','D4','E4','F4','F4','F4','F4','F4','E4','E4','E4','D4','D4','E4','D4','G4'], beats:[0,1,2,0,1,2,0,1,2,3,4,0,1,2,0,1,2,3,0,1,2,0,1,2].map((v,i,a)=>{ let s=0; for(let j=0;j<i;j++) s+=1; return s; }) },
+  ode:     { name:'Ode to Joy',           level:'intermediate', bpm:100, notes:['E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','E4','D4','D4'], beats:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14] },
+  canon:   { name:'Canon in D (excerpt)', level:'intermediate', bpm:90,  notes:['D4','A3','B3','F#3','G3','D3','G3','A3'],            beats:[0,1,2,3,4,5,6,7] },
+  amazing: { name:'Amazing Grace',        level:'intermediate', bpm:80,  notes:['G3','C4','E4','C4','E4','D4','C4','E4','G4'],        beats:[0,1,2,3,4,5,6,7,8] },
+  furelise:{ name:'Für Elise (opening)',  level:'intermediate', bpm:80,  notes:['E5','D#5','E5','D#5','E5','B4','D5','C5','A4'],      beats:[0,0.5,1,1.5,2,3,3.5,4,4.5] },
+  moonlight:{name:'Moonlight Sonata',     level:'expert',       bpm:60,  notes:['G#3','C#4','E4','G#3','C#4','E4','G#3','C#4','E4','F#3','C#4','E4'], beats:[0,0.33,0.67,1,1.33,1.67,2,2.33,2.67,3,3.33,3.67] },
 };
+
+// Level order for comparison
+const LEVEL_RANK = { beginner:0, intermediate:1, expert:2 };
+
+function userCanPlay(songLevel){
+  const userLevel = (currentUser && currentUser.level) || 'beginner';
+  return LEVEL_RANK[userLevel] >= LEVEL_RANK[songLevel];
+}
+
+// ── Build the song dropdown, disabling tracks above the user's level ──────────
+function buildSongSelect(){
+  const sel  = document.getElementById('songSelect');
+  const hint = document.getElementById('songLockHint');
+  const userLevel = (currentUser && currentUser.level) || 'beginner';
+
+  // Group songs by level for optgroup labels
+  const groups = { beginner:[], intermediate:[], expert:[] };
+  Object.entries(SONGS).forEach(([key,song])=>{ groups[song.level].push({key,song}); });
+
+  const levelLabel = { beginner:'Beginner', intermediate:'Intermediate', expert:'Expert' };
+  const levelIcon  = { beginner:'', intermediate:'', expert:'' };
+
+  sel.innerHTML = '';
+  let firstUnlocked = null;
+  let hasLocked = false;
+
+  ['beginner','intermediate','expert'].forEach(lvl=>{
+    if(groups[lvl].length===0) return;
+    const grp = document.createElement('optgroup');
+    grp.label = levelLabel[lvl];
+    groups[lvl].forEach(({key,song})=>{
+      const opt = document.createElement('option');
+      opt.value = key;
+      const locked = !userCanPlay(song.level);
+      if(locked){
+        opt.textContent = '🔒 ' + song.name;
+        opt.disabled = true;
+        hasLocked = true;
+      } else {
+        opt.textContent = song.name;
+        if(!firstUnlocked) firstUnlocked = key;
+      }
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+
+  // Select first unlocked song
+  if(firstUnlocked) sel.value = firstUnlocked;
+
+  // Show hint if any songs are locked
+  hint.classList.toggle('visible', hasLocked && userLevel !== 'expert');
+
+  // Load the selected song
+  loadSong();
+}
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let audioCtx=null, analyser=null, source=null, micStream=null;
@@ -532,11 +618,15 @@ let autoSkipEnabled=true;     // can be toggled by user
 
 // ── RHYTHM state ──────────────────────────────────────────────────────────────
 let rhythmMode=false;
+let countingDown=false;  // true while pre-start countdown is running
+let countdownTimer=null; // interval handle so STOP can cancel it
 let bpm=100;
 let beatMs=600;            // ms per quarter-note beat
 let songStartWall=0;       // wall-clock time (Date.now()) when song started
 let metronomeInterval=null;
 let currentBeat=0;
+let noteAdvanceTimer=null;      // setTimeout handle for auto-advancing a missed note
+let noteTransitionTimer=null;  // setTimeout handle for the 80ms inter-note gap
 let timingScores=[];
 
 // ── TEMPO DRIFT state ─────────────────────────────────────────────────────────
@@ -579,6 +669,7 @@ function applyUserLevel(){
     if(tog) tog.classList.add('on');
     setFeedback('idle','🧠','CNN-Only mode active.','YIN disabled — pure neural network detection');
   }
+  buildSongSelect();
   updateSheetVisibility();
 }
 
@@ -1039,9 +1130,10 @@ function handlePlayAlong(activeNotes, topMidi, topFull, topConf){
       document.getElementById('statStreak2').textContent=alongStreak;
     }
 
+    cancelNoteAdvance();
     songIdx++; updateProgress();
     if(songIdx>=currentSong.notes.length){finishSong();return;}
-    setTimeout(()=>{highlightCurrent();updateTargetPanel();},150);
+    noteTransitionTimer=setTimeout(()=>{ noteTransitionTimer=null; if(!playing)return; highlightCurrent();updateTargetPanel();scheduleNoteAdvance();},150);
     updateAlongStats();
 
   } else {
@@ -1194,6 +1286,7 @@ function updateAlongStats(){
   document.getElementById('statAccuracy').textContent=tot>0?Math.round(correctCount/tot*100)+'%':'—';
 }
 function finishSong(){
+  cancelNoteAdvance();
   playing=false; clearExpKey('p2-'); stopMetronome(); forgiveMode=false;
   const acc=Math.round(correctCount/(correctCount+wrongCount||1)*100);
   const timingAvg=timingScores.length>0?(timingScores.reduce((a,b)=>a+b,0)/timingScores.length).toFixed(0)+'ms avg timing':'';
@@ -1434,9 +1527,13 @@ async function saveSession(acc){
   }catch(e){ /* silently fail — don't disrupt the user */ }
 }
 function highlightCurrent(){
-  document.querySelectorAll('.note-chip').forEach(c=>c.classList.remove('current'));
+  document.querySelectorAll('.note-chip').forEach(c=>c.classList.remove('current','rhythm-active'));
   const ch=document.querySelectorAll('.note-chip')[songIdx];
-  if(ch){ch.classList.add('current');ch.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  if(ch){
+    ch.classList.add('current');
+    if(rhythmMode && playing) ch.classList.add('rhythm-active');
+    ch.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
   highlightSheetNote(songIdx);
 }
 function updateTargetPanel(){
@@ -1461,8 +1558,22 @@ function updateTargetPanel(){
   }
   setExpKey(cm,'p2-');
 }
-function loadSong(){ currentSong=SONGS[document.getElementById('songSelect').value]; bpm=currentSong.bpm; beatMs=Math.round(60000/bpm); document.getElementById('bpmSlider').value=bpm; document.getElementById('bpmVal').textContent=bpm; resetSong(); if(shouldShowSheet()) renderInlineSheet(); }
+function loadSong(){
+  const sel = document.getElementById('songSelect');
+  const key = sel.value;
+  const song = SONGS[key];
+  // Guard: if somehow a locked song is selected, ignore
+  if(!song || !userCanPlay(song.level)) return;
+  currentSong = song;
+  bpm=currentSong.bpm; beatMs=Math.round(60000/bpm);
+  document.getElementById('bpmSlider').value=bpm;
+  document.getElementById('bpmVal').textContent=bpm;
+  resetSong();
+  if(shouldShowSheet()) renderInlineSheet();
+}
 function resetSong(){
+  if(countingDown) cancelCountdown();
+  cancelNoteAdvance();
   songIdx=0;correctCount=0;wrongCount=0;playing=false;alongStreak=0;timingScores=[];
   noteLockUntil=0; lastNoteWall=0; recentGaps=[]; wrongAttemptsOnNote=0; forgiveMode=false; missedCount=0;
   clearExpKey('p2-'); stopMetronome();
@@ -1480,16 +1591,121 @@ function resetSong(){
   setFeedback('idle','🎹','Press START and play the highlighted note.','Rhythm mode: '+(rhythmMode?`ON · ${bpm} BPM`:'OFF'));
 }
 function togglePlay(){
+  // If a countdown is running, pressing STOP cancels it
+  if(countingDown){
+    cancelCountdown();
+    return;
+  }
+
   playing=!playing;
   document.getElementById('startBtn').textContent=playing?'⏹ STOP':'▶ START';
+
   if(playing){
-    songStartWall=Date.now(); // record wall-clock start for rhythm timing
-    if(rhythmMode)startMetronome();
-    highlightCurrent();updateTargetPanel();
-    setFeedback('idle','🎯','Match the highlighted note!',rhythmMode?`Rhythm ON · ${bpm} BPM — play in time!`:'Rhythm OFF — play at any pace');
+    // If the previous song finished, reset before starting again
+    if(songIdx >= currentSong.notes.length) resetSong();
+    if(rhythmMode){
+      // Rhythm ON — show 5-second countdown before starting
+      startCountdown();
+    } else {
+      // Rhythm OFF — start immediately as before
+      beginSong();
+    }
   } else {
+    cancelNoteAdvance();
     clearExpKey('p2-'); stopMetronome();
   }
+}
+
+// ── NOTE AUTO-ADVANCE (rhythm mode) ─────────────────────────────────────────
+// Each note owns a timer equal to one beat (beatMs). If the user plays in time
+// the timer is cancelled. If it expires the note is marked missed (red) and the
+// next note's timer is scheduled automatically.
+function scheduleNoteAdvance(){
+  cancelNoteAdvance();
+  if(!rhythmMode || !playing) return;
+  noteAdvanceTimer = setTimeout(()=>{
+    noteAdvanceTimer = null;
+    if(!playing || songIdx >= currentSong.notes.length) return;
+    // Mark chip missed (red) and count as wrong
+    const chips = document.querySelectorAll('.note-chip');
+    chips[songIdx]?.classList.remove('current');
+    chips[songIdx]?.classList.add('done-wrong');
+    if(chips[songIdx]) chips[songIdx].querySelector('.timing-tag').textContent = '✗';
+    clearExpKey('p2-');
+    wrongCount++;
+    alongStreak = 0;
+    updateAlongStats();
+    const missedName = midiToFull(noteToMidi(currentSong.notes[songIdx]));
+    setFeedback('wrong','✗', `Missed — ${missedName}`, 'Not played in time · moving on');
+    songIdx++;
+    updateProgress();
+    if(songIdx >= currentSong.notes.length){ finishSong(); return; }
+    noteTransitionTimer=setTimeout(()=>{ noteTransitionTimer=null; if(!playing)return; highlightCurrent(); updateTargetPanel(); scheduleNoteAdvance(); }, 80);
+  }, beatMs);
+}
+
+function cancelNoteAdvance(){
+  if(noteAdvanceTimer){    clearTimeout(noteAdvanceTimer);    noteAdvanceTimer=null;    }
+  if(noteTransitionTimer){ clearTimeout(noteTransitionTimer); noteTransitionTimer=null; }
+}
+
+function beginSong(){
+  // Actually begins note detection and timing — called after countdown (or immediately if no rhythm)
+  songStartWall=Date.now();
+  if(rhythmMode) startMetronome();
+  highlightCurrent(); updateTargetPanel();
+  setFeedback('idle','🎯','Match the highlighted note!',
+    rhythmMode?`Rhythm ON · ${bpm} BPM — play in time!`:'Rhythm OFF — play at any pace');
+  scheduleNoteAdvance();
+}
+
+function startCountdown(){
+  countingDown=true;
+  playing=false; // keep detection off during countdown
+  document.getElementById('startBtn').textContent='⏹ STOP';
+
+  const overlay = document.getElementById('countdownOverlay');
+  const numEl   = document.getElementById('countdownNum');
+  const lblEl   = document.getElementById('countdownLabel');
+
+  let count = 5;
+  numEl.textContent = count;
+  lblEl.textContent = 'get ready…';
+  overlay.classList.add('visible');
+
+  // Restart the pulse animation on each tick by cloning the element
+  let currentNumEl = numEl;
+  function tick(){
+    count--;
+    if(count <= 0){
+      // Countdown done — hide overlay and begin
+      overlay.classList.remove('visible');
+      countingDown=false;
+      countdownTimer=null;
+      playing=true;
+      beginSong();
+      return;
+    }
+    // Re-trigger CSS pulse animation by swapping the node
+    const fresh=currentNumEl.cloneNode(true);
+    fresh.textContent=count;
+    fresh.style.animation='none';
+    currentNumEl.parentNode.replaceChild(fresh,currentNumEl);
+    currentNumEl=fresh;
+    void fresh.offsetWidth;
+    fresh.style.animation='cdPulse 1s ease-out';
+  }
+
+  countdownTimer=setInterval(tick, 1000);
+}
+
+function cancelCountdown(){
+  if(countdownTimer){ clearInterval(countdownTimer); countdownTimer=null; }
+  countingDown=false;
+  playing=false;
+  document.getElementById('countdownOverlay').classList.remove('visible');
+  document.getElementById('startBtn').textContent='▶ START';
+  setFeedback('idle','🎹','Countdown cancelled.','Press START to try again');
 }
 function showHint(){
   if(!playing||songIdx>=currentSong.notes.length)return;
