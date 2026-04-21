@@ -62,38 +62,11 @@
   .welcome-text h1{ font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--accent); margin-bottom:4px; }
   .welcome-text p{ font-size:0.68rem; color:var(--text-dim); line-height:1.7; }
 
-  /* Level section */
+  /* Section title kept for Practice heading */
   .section-title{
     font-size:0.6rem; letter-spacing:0.22em; color:var(--text-dim); text-transform:uppercase;
     margin-bottom:14px; margin-top:28px;
   }
-
-  .level-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px; }
-  .level-card{
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:14px; padding:22px 24px; cursor:pointer; transition:all 0.25s;
-    position:relative;
-  }
-  .level-card:hover{ border-color:var(--accent2); transform:translateY(-2px); }
-  .level-card.active{
-    border-color:var(--accent); background:rgba(200,169,110,0.06);
-  }
-  .level-card.active::after{
-    content:'CURRENT'; position:absolute; top:14px; right:14px;
-    font-size:0.5rem; letter-spacing:0.18em; color:var(--accent);
-    background:rgba(200,169,110,0.15); padding:3px 8px; border-radius:4px;
-  }
-  .level-icon{ font-size:1.6rem; margin-bottom:10px; }
-  .level-name{ font-size:0.88rem; font-weight:700; margin-bottom:6px; }
-  .level-card.active .level-name{ color:var(--accent); }
-  .level-desc{ font-size:0.62rem; color:var(--text-dim); line-height:1.7; }
-  .level-features{ margin-top:12px; display:flex; flex-direction:column; gap:5px; }
-  .feat{
-    font-size:0.6rem; color:var(--text-dim); display:flex; align-items:center; gap:7px;
-  }
-  .feat::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--border); flex-shrink:0; }
-  .feat.on{ color:var(--text); }
-  .feat.on::before{ background:var(--right); }
 
   /* Quick actions */
   .action-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
@@ -114,26 +87,6 @@
   .tag-intermediate{ background:rgba(126,184,200,0.12); color:var(--accent2); }
   .tag-both      { background:rgba(200,169,110,0.12); color:var(--accent); }
 
-  /* Server status */
-  .status-bar{
-    background:var(--surface); border:1px solid var(--border); border-radius:10px;
-    padding:12px 18px; display:flex; align-items:center; gap:12px; font-size:0.65rem;
-  }
-  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; }
-  .status-dot.online { background:var(--right);  box-shadow:0 0 8px var(--right); }
-  .status-dot.offline{ background:var(--wrong); }
-  .status-text{ color:var(--text-dim); }
-  .status-detail{ color:var(--text-dim); font-size:0.58rem; margin-left:auto; }
-
-  /* Level change toast */
-  .toast{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
-    background:var(--surface); border:1px solid var(--right); color:var(--right);
-    padding:10px 20px; border-radius:8px; font-size:0.68rem; z-index:999;
-    transition:transform 0.3s ease; pointer-events:none;
-  }
-  .toast.show{ transform:translateX(-50%) translateY(0); }
-
   @media(max-width:640px){
     .level-grid{ grid-template-columns:1fr; }
     .action-grid{ grid-template-columns:1fr 1fr; }
@@ -142,6 +95,12 @@
     .welcome-banner{ flex-direction:column; text-align:center; }
   }
 </style>
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <script src="api-config.js"></script>
 </head>
 <body>
 
@@ -150,8 +109,12 @@
   <div class="header-right">
     <div class="user-chip">
       <div class="user-avatar" id="headerAvatar">?</div>
-      <span id="headerUsername">Loading…</span>
+      <a href="analytics.html"style="padding:6px 12px;border-radius:6px;background:var(--surface2);color:var(--text-dim);
+      font-size:0.62rem;text-decoration:none;letter-spacing:0.08em;white-space:nowrap;"><span id="headerUsername"></a>
     </div>
+    <a href="settings.html" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);
+    background:var(--surface2);color:var(--text-dim);font-size:0.62rem;text-decoration:none;letter-spacing:
+    0.08em;white-space:nowrap;">SETTINGS</a>
     <button class="logout-btn" onclick="logout()">Sign Out</button>
   </div>
 </header>
@@ -167,44 +130,7 @@
     </div>
   </div>
 
-  <!-- Server status -->
-  <div class="status-bar">
-    <div class="status-dot" id="statusDot"></div>
-    <span class="status-text" id="statusText">Checking server…</span>
-    <span class="status-detail" id="statusDetail"></span>
-  </div>
 
-  <!-- Level selector -->
-  <div class="section-title">Your Practice Level</div>
-  <div class="level-grid">
-
-    <div class="level-card" id="cardBeginner" onclick="setLevel('beginner')">
-      <div class="level-icon">🌱</div>
-      <div class="level-name">Beginner</div>
-      <div class="level-desc">Perfect for learning individual notes and simple melodies.</div>
-      <div class="level-features">
-        <div class="feat on">YIN + CNN pitch detection</div>
-        <div class="feat on">±2 semitone forgiveness</div>
-        <div class="feat on">Octave differences forgiven</div>
-        <div class="feat on">Onset detection (no jitter)</div>
-        <div class="feat">CNN-only polyphonic mode</div>
-      </div>
-    </div>
-
-    <div class="level-card" id="cardIntermediate" onclick="setLevel('intermediate')">
-      <div class="level-icon">🎹</div>
-      <div class="level-name">Intermediate</div>
-      <div class="level-desc">For players ready for tighter accuracy and chord recognition.</div>
-      <div class="level-features">
-        <div class="feat on">YIN + CNN pitch detection</div>
-        <div class="feat on">±2 semitone forgiveness</div>
-        <div class="feat on">Octave differences forgiven</div>
-        <div class="feat on">Onset detection (no jitter)</div>
-        <div class="feat on">CNN-only polyphonic mode (toggle)</div>
-      </div>
-    </div>
-
-  </div>
 
   <!-- Quick actions -->
   <div class="section-title">Practice</div>
@@ -218,18 +144,11 @@
     </a>
 
     <div class="action-card" id="actionCnnOnly" style="opacity:0.4;cursor:not-allowed;" onclick="cnnOnlyClick()">
-      <div class="action-icon">🧠</div>
+      <div class="action-icon">🕸️</div>
       <div class="action-name">CNN-Only Mode</div>
       <div class="action-desc">Skip YIN entirely. Pure neural network detection. Great for chords.</div>
-      <span class="action-tag tag-intermediate">INTERMEDIATE</span>
+      <span class="action-tag tag-intermediate">EXPERT</span>
     </div>
-
-    <a class="action-card" href="analytics.html">
-      <div class="action-icon">📊</div>
-      <div class="action-name">Analytics</div>
-      <div class="action-desc">Practice history, accuracy trends and daily streak.</div>
-      <span class="action-tag tag-both">ALL LEVELS</span>
-    </a>
 
     <a class="action-card" href="sheetmusic.html">
       <div class="action-icon">🎼</div>
@@ -239,9 +158,30 @@
     </a>
 
     <a class="action-card" href="analyser.html">
-      <div class="action-icon">🔍</div>
-      <div class="action-name">Audio Analyser</div>
-      <div class="action-desc">Upload a recording and check how well it matches a reference song.</div>
+      <div class="action-icon">🎶</div>
+      <div class="action-name">Upload MIDI</div>
+      <div class="action-desc">Upload a MIDI reference and build your personal library to compare against.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+    <a class="action-card" href="lesson-plan.html">
+      <div class="action-icon">📋</div>
+      <div class="action-name">Lesson Plan</div>
+      <div class="action-desc">Generate a personalised 1-week AI practice plan based on your level and goals.</div>
+      <span class="action-tag tag-both">ALL LEVELS</span>
+    </a>
+
+    <a class="action-card" href="theory.html">
+      <div class="action-icon">🎓</div>
+      <div class="action-name">Theory Library</div>
+      <div class="action-desc">Notes, scales, chords, intervals, rhythm, key signatures and more — all in one place.</div>
+      <span class="action-tag tag-beginner">BEGINNER</span>
+    </a>
+
+    <a class="action-card" href="settings.html">
+      <div class="action-icon">⚙️</div>
+      <div class="action-name">Settings</div>
+      <div class="action-desc">Change your practice level, check server status, and configure the API connection.</div>
       <span class="action-tag tag-both">ALL LEVELS</span>
     </a>
 
@@ -253,7 +193,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'http://127.0.0.1:5000/api';
+const API = getApiUrl();
 
 // ── Auth guard ──
 const token = localStorage.getItem('pc_token');
@@ -276,18 +216,15 @@ function renderUser(user){
 }
 
 function applyLevel(level){
-  document.getElementById('cardBeginner').classList.toggle('active',     level==='beginner');
-  document.getElementById('cardIntermediate').classList.toggle('active', level==='intermediate');
-
   const cnnCard = document.getElementById('actionCnnOnly');
-  if(level==='intermediate'){
+  if(level==='expert'){
     cnnCard.style.opacity='1';
     cnnCard.style.cursor='pointer';
     cnnCard.onclick=()=>openCnnOnly();
   } else {
     cnnCard.style.opacity='0.4';
     cnnCard.style.cursor='not-allowed';
-    cnnCard.onclick=cnnOnlyClick;
+    cnnCard.onclick=()=>showToast('CNN-Only mode requires Expert level.');
   }
 }
 
@@ -306,46 +243,8 @@ async function fetchMe(){
 }
 fetchMe();
 
-// ── Server status ──
-async function checkServer(){
-  try{
-    const r = await fetch(API+'/status', {signal:AbortSignal.timeout(2000)});
-    const d = await r.json();
-    const dot  = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
-    const det  = document.getElementById('statusDetail');
-    dot.className  = 'status-dot online';
-    text.textContent = 'Inference server online';
-    const mi = d.model||{};
-    det.textContent = mi.epoch ? `Model epoch ${mi.epoch} · F1 ${mi.f1}` : 'No model loaded';
-  }catch(e){
-    document.getElementById('statusDot').className  = 'status-dot offline';
-    document.getElementById('statusText').textContent = 'Server offline — run app.py to enable CNN';
-    document.getElementById('statusDetail').textContent = '';
-  }
-}
-checkServer();
-
-// ── Level change ──
-async function setLevel(level){
-  if(!currentUser || currentUser.level===level) return;
-  try{
-    const r = await fetch(API+'/me/level',{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({level})
-    });
-    if(!r.ok){ showToast('Failed to update level.'); return; }
-    const d = await r.json();
-    currentUser = d.user;
-    localStorage.setItem('pc_user', JSON.stringify(currentUser));
-    renderUser(currentUser);
-    showToast(`Level changed to ${level.charAt(0).toUpperCase()+level.slice(1)} ✓`);
-  }catch(e){ showToast('Cannot reach server.'); }
-}
-
 function cnnOnlyClick(){
-  showToast('CNN-Only mode requires Intermediate level.');
+  showToast('CNN-Only mode requires Expert level.');
 }
 function openCnnOnly(){
   // Pass flag via sessionStorage so the app reads it
@@ -353,7 +252,7 @@ function openCnnOnly(){
   window.location.href='piano-coach-v3.5.html';
 }
 
-// ── Logout ──
+// Logout
 function logout(){
   localStorage.removeItem('pc_token');
   localStorage.removeItem('pc_user');

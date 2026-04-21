@@ -103,6 +103,7 @@ def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0
 #  TRAINING LOOP
 # ─────────────────────────────────────────────
 
+
 def train_one_epoch(model, loader, optimizer, criterion, device):
     model.train()
     total_loss = 0.0
@@ -130,19 +131,32 @@ def evaluate(model, loader, criterion, device):
 
     for x, y in tqdm(loader, desc="  Val  ", leave=False):
         x, y = x.to(device), y.to(device)
-        out  = model(x)
-        loss = criterion(out, y)
+        logits = model(x)
+        loss   = criterion(logits, y)
         total_loss += loss.item() * len(x)
 
-        all_probs.append(out.cpu().numpy())
+        # Apply sigmoid — model outputs raw logits now
+        probs = torch.sigmoid(logits)
+        all_probs.append(probs.cpu().numpy())
         all_labels.append(y.cpu().numpy())
 
     avg_loss   = total_loss / len(loader.dataset)
     all_probs  = np.vstack(all_probs)
     all_labels = np.vstack(all_labels)
-    p, r, f    = compute_metrics(all_labels, all_probs)
 
-    return avg_loss, p, r, f
+    # ── Threshold sweep — find the threshold that maximises F1 ──────────────
+    best_t, best_f1 = 0.5, 0.0
+    print("  Threshold sweep:", end="")
+    for t in np.arange(0.10, 0.71, 0.05):
+        _, _, f = compute_metrics(all_labels, all_probs, threshold=t)
+        print(f" {t:.2f}→{f:.3f}", end="")
+        if f > best_f1:
+            best_f1 = f
+            best_t  = t
+    print(f"  ← best t={best_t:.2f}")
+
+    p, r, f1 = compute_metrics(all_labels, all_probs, threshold=best_t)
+    return avg_loss, p, r, f1, best_t
 
 
 # ─────────────────────────────────────────────
@@ -189,7 +203,7 @@ def load_last_checkpoint(path, model, optimizer, scheduler, device):
     Returns (start_epoch, best_f1, history) where start_epoch is the
     first epoch that still needs to be trained.
     """
-    ckpt = torch.load(path, map_location=device)
+    ckpt = torch.load(path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state"])
     optimizer.load_state_dict(ckpt["optimizer"])
     scheduler.load_state_dict(ckpt["scheduler"])
@@ -237,7 +251,11 @@ def main(args):
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model parameters: {total_params:,}")
 
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss(
+        pos_weight=torch.tensor([3.0]).to(device)
+        # pos_weight=3.0 means missing an active note is penalised 3× more
+        # than a false positive. Directly increases recall on sparse datasets.
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5
@@ -250,15 +268,17 @@ def main(args):
 
     # ── Resume or fresh start ─────────────────────────────────────────────────
     start_epoch = 1
-    best_f1     = 0.0
-    history     = []
+    best_f1        = 0.0
+    best_threshold = 0.5   # updated each epoch by the threshold sweep
+    history        = []
 
     if not args.restart and os.path.exists(last_ckpt_path):
         print(f"\n🔄 Resuming from checkpoint: {last_ckpt_path}")
         start_epoch, best_f1, history = load_last_checkpoint(
             last_ckpt_path, model, optimizer, scheduler, device
         )
-        print(f"   Resumed at epoch {start_epoch}  (best F1 so far: {best_f1:.3f})")
+        best_threshold = history[-1].get("best_threshold", 0.5) if history else 0.5
+        print(f"   Resumed at epoch {start_epoch}  (best F1 so far: {best_f1:.3f}  threshold: {best_threshold:.2f})")
     else:
         if args.restart and os.path.exists(last_ckpt_path):
             print(f"\n⚠  --restart passed: ignoring existing checkpoint.")
@@ -276,17 +296,18 @@ def main(args):
     for epoch in range(start_epoch, end_epoch + 1):
         print(f"Epoch {epoch}/{end_epoch}")
 
-        train_loss         = train_one_epoch(model, train_loader, optimizer, criterion, device)
-        val_loss, p, r, f1 = evaluate(model, val_loader, criterion, device)
+        train_loss                  = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, p, r, f1, best_t = evaluate(model, val_loader, criterion, device)
+        best_threshold = best_t
 
         scheduler.step(val_loss)
 
         lr_now = optimizer.param_groups[0]["lr"]
         print(f"  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}"
-              f"  P={p:.3f}  R={r:.3f}  F1={f1:.3f}  lr={lr_now:.6f}")
+              f"  P={p:.3f}  R={r:.3f}  F1={f1:.3f}  best_t={best_t:.2f}  lr={lr_now:.6f}")
 
         row = dict(epoch=epoch, train_loss=train_loss, val_loss=val_loss,
-                   precision=p, recall=r, f1=f1)
+                   precision=p, recall=r, f1=f1, best_threshold=best_t)
         history.append(row)
 
         # ── Save last_checkpoint.pt (every epoch, for crash recovery) ─────
@@ -302,7 +323,10 @@ def main(args):
         if f1 > best_f1:
             best_f1 = f1
             save_best_model(best_ckpt_path, epoch, model, optimizer, f1, n_mels, n_frames)
-            print(f"  💾 best_model.pt updated  (F1={best_f1:.3f}) → {best_ckpt_path}")
+            # Also save best threshold so app.py can use it directly
+            torch.save({"threshold": best_t},
+                       os.path.join(args.output_dir, "best_threshold.pt"))
+            print(f"  💾 best_model.pt updated  (F1={best_f1:.3f}  threshold={best_t:.2f}) → {best_ckpt_path}")
 
     print(f"\n✅ Training complete!  Best F1 = {best_f1:.3f}")
     print(f"   History  → {hist_path}")

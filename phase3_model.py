@@ -1,15 +1,3 @@
-"""
-phase3_model.py — Piano Transcription CNN
-==========================================
-Imported by phase4_train.py.
-
-Architecture:
-    Input : (batch, 1, N_MELS, N_FRAMES)   — 1-channel mel spectrogram window
-    Output: (batch, 88)                     — sigmoid probabilities, one per piano key
-
-Place this file in the SAME folder as phase4_train.py.
-"""
-
 import torch
 import torch.nn as nn
 
@@ -41,25 +29,26 @@ class PianoTranscriptionCNN(nn.Module):
 
     Default config matches build_dataset.py: N_MELS=64, N_FRAMES=11.
     """
-
+    #  Architecture inspired by common audio CNNs, but simplified for this task.
     def __init__(self, n_mels: int = 64, n_frames: int = 11, n_notes: int = 88):
         super().__init__()
         self.n_mels   = n_mels
         self.n_frames = n_frames
         self.n_notes  = n_notes
 
-        # ── Feature extractor ──────────────────────────────────────────────
+        # Feature extractor 
         self.features = nn.Sequential(
-            ConvBlock(1,  32, pool=True),   # → (32, M/2, F/2)
-            ConvBlock(32, 64, pool=True),   # → (64, M/4, F/4)
-            ConvBlock(64, 128, pool=False), # → (128, M/4, F/4)  no pool to keep freq detail
+            ConvBlock(1,  32, pool=True),  
+            ConvBlock(32, 64, pool=True),   
+            ConvBlock(64, 128, pool=False), 
             nn.Dropout2d(0.25),
         )
 
-        # Adaptive pool collapses spatial dims to (4, 4) regardless of input size
+        # Adaptive pool collapses spatial dims to (4, 4) regardless of input size because the fully-connected head expects a fixed-size input. 
+        # This allows flexibility in N_MELS and N_FRAMES.
         self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
 
-        # ── Classifier head ────────────────────────────────────────────────
+        # Classifier head with two hidden layers and dropout for regularization. Outputs raw logits for BCEWithLogitsLoss.
         self.classifier = nn.Sequential(
             nn.Flatten(),
             nn.Linear(128 * 4 * 4, 512),
@@ -69,9 +58,11 @@ class PianoTranscriptionCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout(0.3),
             nn.Linear(256, n_notes),
-            nn.Sigmoid(),          # multi-label: each note independent
+            # NO Sigmoid here, BCEWithLogitsLoss applies it internally during
+            # training (numerically more stable). At inference, app.py applies
+            # torch.sigmoid() manually before thresholding.
         )
-
+        
         self._init_weights()
 
     def _init_weights(self):
@@ -93,7 +84,7 @@ class PianoTranscriptionCNN(nn.Module):
         return x
 
 
-# ─── Quick shape check ────────────────────────────────────────────────────────
+#     Quick shape check                                                         
 if __name__ == "__main__":
     model = PianoTranscriptionCNN(n_mels=64, n_frames=11)
     total = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -102,7 +93,6 @@ if __name__ == "__main__":
     dummy = torch.zeros(4, 1, 64, 11)   # batch of 4 windows
     out   = model(dummy)
     print(f"Input:  {tuple(dummy.shape)}")
-    print(f"Output: {tuple(out.shape)}   (expected: (4, 88))")
+    print(f"Output: {tuple(out.shape)}   (expected: (4, 88)) — raw logits")
     assert out.shape == (4, 88), "Shape mismatch!"
-    assert out.min() >= 0 and out.max() <= 1, "Sigmoid out of [0,1]!"
-    print("✅ Shape check passed.")
+    print("✅ Shape check passed. (Output is raw logits — apply sigmoid for probabilities)")

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="manifest.json">
+<title>Piano Coach — Settings</title>
+<script src="api-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;--border:#2a2a3a;--accent:#c8a96e;--accent2:#7eb8c8;--right:#5ae0a0;--wrong:#e05a5a;--text:#e8e8f0;--text-dim:#6a6a8a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:15px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100;}
+  .logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--accent);}
+  .logo span{font-size:0.58rem;color:var(--text-dim);font-family:'Space Mono',monospace;display:block;letter-spacing:0.18em;}
+  .nav-btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-family:'Space Mono',monospace;font-size:0.63rem;text-decoration:none;transition:all 0.2s;}
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+  main{max-width:560px;margin:0 auto;padding:32px 20px;}
+  h2{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--accent);margin-bottom:8px;}
+  .sub{font-size:0.65rem;color:var(--text-dim);line-height:1.8;margin-bottom:28px;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px;}
+  .card-title{font-size:0.68rem;font-weight:700;letter-spacing:0.1em;margin-bottom:6px;}
+  .card-desc{font-size:0.62rem;color:var(--text-dim);line-height:1.7;margin-bottom:16px;}
+
+  label{font-size:0.6rem;letter-spacing:0.15em;color:var(--text-dim);text-transform:uppercase;display:block;margin-bottom:7px;}
+  input[type=text]{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.75rem;outline:none;transition:border-color 0.2s;}
+  input[type=text]:focus{border-color:var(--accent2);}
+  input[type=text]::placeholder{color:var(--text-dim);}
+
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .btn{padding:10px 20px;border-radius:8px;font-family:'Space Mono',monospace;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s;border:none;}
+  .btn-save{background:var(--accent);color:#0a0a0f;}
+  .btn-save:hover{opacity:0.88;}
+  .btn-clear{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}
+  .btn-clear:hover{border-color:var(--wrong);color:var(--wrong);}
+  .btn-test{background:var(--surface2);color:var(--accent2);border:1px solid var(--accent2);}
+  .btn-test:hover{background:rgba(126,184,200,0.1);}
+
+  .status-msg{font-size:0.65rem;margin-top:10px;padding:9px 13px;border-radius:7px;display:none;}
+  .status-msg.ok{background:rgba(90,224,160,0.1);border:1px solid var(--right);color:var(--right);}
+  .status-msg.err{background:rgba(224,90,90,0.1);border:1px solid var(--wrong);color:var(--wrong);}
+  .status-msg.info{background:rgba(200,169,110,0.1);border:1px solid var(--accent);color:var(--accent);}
+
+  .current-url{font-size:0.65rem;padding:8px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);word-break:break-all;color:var(--accent2);margin-top:10px;}
+  .current-label{font-size:0.56rem;color:var(--text-dim);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;}
+
+  /* Level cards */
+  .level-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:4px; }
+  .level-card{
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:12px; padding:18px 16px; cursor:pointer; transition:all 0.22s;
+    position:relative;
+  }
+  .level-card:hover{ border-color:var(--accent2); transform:translateY(-2px); }
+  .level-card.active{ border-color:var(--accent); background:rgba(200,169,110,0.07); }
+  .level-card.active::after{
+    content:'CURRENT'; position:absolute; top:11px; right:11px;
+    font-size:0.48rem; letter-spacing:0.16em; color:var(--accent);
+    background:rgba(200,169,110,0.15); padding:2px 7px; border-radius:4px;
+  }
+  .level-name{ font-size:0.8rem; font-weight:700; margin-bottom:5px; }
+  .level-card.active .level-name{ color:var(--accent); }
+  .level-desc{ font-size:0.58rem; color:var(--text-dim); line-height:1.6; }
+  .level-features{ margin-top:10px; display:flex; flex-direction:column; gap:4px; }
+  .feat{ font-size:0.56rem; color:var(--text-dim); display:flex; align-items:center; gap:6px; }
+  .feat::before{ content:''; width:4px; height:4px; border-radius:50%; background:var(--border); flex-shrink:0; }
+  .feat.on{ color:var(--text); }
+  .feat.on::before{ background:var(--right); }
+
+  /* Server status */
+  .status-bar{
+    display:flex; align-items:center; gap:10px; padding:11px 16px;
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    font-size:0.62rem; margin-top:12px;
+  }
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; }
+  .status-dot.online{ background:var(--right); box-shadow:0 0 8px var(--right); }
+  .status-dot.offline{ background:var(--wrong); }
+  .status-text{ color:var(--text-dim); }
+  .status-detail{ color:var(--text-dim); font-size:0.55rem; margin-left:auto; }
+
+  /* Toast */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--surface); border:1px solid var(--right); color:var(--right);
+    padding:10px 20px; border-radius:8px; font-size:0.68rem; z-index:999;
+    transition:transform 0.3s ease; pointer-events:none;
+  }
+  .toast.show{ transform:translateX(-50%) translateY(0); }
+
+  @media(max-width:600px){ .level-grid{ grid-template-columns:1fr; } }
+  .steps{counter-reset:step;}
+  .step{display:flex;gap:12px;margin-bottom:14px;}
+  .step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--bg);font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+  .step-text{font-size:0.65rem;color:var(--text-dim);line-height:1.7;}
+  .step-text code{background:var(--surface2);padding:1px 6px;border-radius:4px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.65rem;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Piano Coach <span>SETTINGS</span></div>
+  <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+</header>
+
+<main>
+  <h2>Practice Level</h2>
+  <p class="sub">Choose your skill level. This controls which AI model is used for detection and how strictly notes are judged.</p>
+
+  <div class="card">
+    <div class="card-title">Your Level</div>
+    <div class="card-desc">Select a level to update it on the server immediately.</div>
+    <div class="level-grid">
+      <div class="level-card" id="cardBeginner" onclick="setLevel('beginner')">
+        <div class="level-name">Beginner</div>
+        <div class="level-desc">Simple melodies, perfect for getting started.</div>
+        <div class="level-features">
+          <div class="feat on">YIN + NSynth classifier</div>
+          <div class="feat on">High accuracy on single notes</div>
+          <div class="feat">Chord detection</div>
+        </div>
+      </div>
+      <div class="level-card" id="cardIntermediate" onclick="setLevel('intermediate')">
+        <div class="level-name">Intermediate</div>
+        <div class="level-desc">NSynth + MAESTRO CNN. Best of both models.</div>
+        <div class="level-features">
+          <div class="feat on">YIN + NSynth + MAESTRO CNN</div>
+          <div class="feat on">High single-note accuracy</div>
+          <div class="feat on">Basic chord support</div>
+          <div class="feat on">Tighter pitch tolerance</div>
+        </div>
+      </div>
+      <div class="level-card" id="cardExpert" onclick="setLevel('expert')">
+        <div class="level-name">Expert</div>
+        <div class="level-desc">Pure MAESTRO CNN. Full polyphonic detection.</div>
+        <div class="level-features">
+          <div class="feat on">MAESTRO CNN only</div>
+          <div class="feat on">Full polyphonic detection</div>
+          <div class="feat on">CNN-only toggle available</div>
+          <div class="feat on">No pitch forgiveness</div>
+          <div class="feat" style="color:var(--warn);">⚠ Work in progress</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:28px;">Server Status</h2>
+  <p class="sub">Live status of the Flask inference server and loaded models.</p>
+
+  <div class="card">
+    <div class="card-title">Connection</div>
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Checking…</span>
+      <span class="status-detail" id="statusDetail"></span>
+    </div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-test" onclick="checkServer()">🔌 REFRESH STATUS</button>
+    </div>
+  </div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = getApiUrl();
+const token = localStorage.getItem('pc_token');
+let currentUser = null;
+try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
+
+// ── Level selector ────────────────────────────────────────────────────────────
+function applyLevel(level){
+  document.getElementById('cardBeginner').classList.toggle('active',     level==='beginner');
+  document.getElementById('cardIntermediate').classList.toggle('active', level==='intermediate');
+  document.getElementById('cardExpert').classList.toggle('active',       level==='expert');
+}
+
+async function setLevel(level){
+  if(!token){ showMsg('err','Not logged in.'); return; }
+  if(currentUser && currentUser.level===level) return;
+  try{
+    const r = await fetch(API+'/me/level',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({level})
+    });
+    if(!r.ok){ showToast('Failed to update level.'); return; }
+    const d = await r.json();
+    currentUser = d.user;
+    localStorage.setItem('pc_user', JSON.stringify(currentUser));
+    applyLevel(level);
+    showToast(`Level changed to ${level.charAt(0).toUpperCase()+level.slice(1)} ✓`);
+  }catch(e){ showToast('Cannot reach server.'); }
+}
+
+if(currentUser) applyLevel(currentUser.level);
+
+// ── Server status ─────────────────────────────────────────────────────────────
+async function checkServer(){
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  const det  = document.getElementById('statusDetail');
+  dot.className='status-dot'; text.textContent='Checking…'; det.textContent='';
+  try{
+    const r = await fetch(API+'/status',{signal:AbortSignal.timeout(3000)});
+    const d = await r.json();
+    dot.className='status-dot online';
+    text.textContent='Server online';
+    const mi = d.model||{}, ni = d.nsynth||d.nsynth_model||{};
+    const parts=[];
+    if(mi.epoch) parts.push(`MAESTRO epoch ${mi.epoch} · F1 ${mi.f1}`);
+    else parts.push('MAESTRO not loaded');
+    if(ni.loaded) parts.push(`NSynth epoch ${ni.epoch} · top-1 ${(ni.accuracy*100).toFixed(1)}%`);
+    else parts.push('NSynth not loaded');
+    det.textContent=parts.join('  ·  ');
+  }catch(e){
+    dot.className='status-dot offline';
+    text.textContent='Server offline — run app.py';
+    det.textContent='';
+  }
+}
+checkServer();
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ── URL helpers ───────────────────────────────────────────────────────────────
+function loadCurrent(){
+  const url = getApiUrl();
+  document.getElementById('currentUrl').textContent = url;
+  const stored = localStorage.getItem('pc_api_base') || '';
+  document.getElementById('urlInput').value = stored;
+}
+
+function saveUrl(){
+  const val = document.getElementById('urlInput').value.trim().replace(/\/+$/, '');
+  if(val){
+    localStorage.setItem('pc_api_base', val);
+    showMsg('ok', '✓ Saved — ' + val + '/api is now the active endpoint');
+  } else {
+    localStorage.removeItem('pc_api_base');
+    showMsg('info', '✓ Cleared — using localhost:5000');
+  }
+  loadCurrent();
+}
+
+function clearUrl(){
+  localStorage.removeItem('pc_api_base');
+  document.getElementById('urlInput').value = '';
+  showMsg('info', '✓ Reset to localhost — http://127.0.0.1:5000/api');
+  loadCurrent();
+}
+
+async function testConnection(){
+  showMsg('info', '⏳ Testing connection…');
+  try{
+    const r = await fetch(getApiUrl() + '/status', { signal: AbortSignal.timeout(4000) });
+    const d = await r.json();
+    if(r.ok){
+      showMsg('ok', '✓ Connected! Server is online · Model: ' + (d.model_loaded ? 'loaded ✓' : 'not loaded ✗'));
+    } else {
+      showMsg('err', '✗ Server responded with error ' + r.status);
+    }
+  }catch(e){
+    showMsg('err', '✗ Could not reach server — ' + e.message + '. Check ngrok is running and URL is correct.');
+  }
+}
+
+function showMsg(type, text){
+  const el = document.getElementById('statusMsg');
+  el.className = 'status-msg ' + type;
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+loadCurrent();
+</script>
+</body>
+</html>

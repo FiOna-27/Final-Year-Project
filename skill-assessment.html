@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Skill Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; display:flex; flex-direction:column; }
+  body::before{ content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; opacity:0.4; }
+
+  header{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:100; }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+  .logo span{ font-size:0.6rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .nav-btn{ padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.08em; text-decoration:none; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  main{ max-width:720px; margin:0 auto; padding:32px 22px; flex:1; width:100%; }
+
+  /*    Intro    */
+  .intro-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px 32px; margin-bottom:24px; }
+  .intro-title{ font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--accent); margin-bottom:6px; }
+  .intro-sub{ font-size:0.62rem; letter-spacing:0.14em; color:var(--text-dim); text-transform:uppercase; margin-bottom:18px; }
+  .intro-body{ font-size:0.78rem; line-height:1.8; color:var(--text-dim); margin-bottom:22px; }
+  .intro-body strong{ color:var(--text); }
+  .rounds-preview{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
+  .round-pill{ padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); font-size:0.6rem; letter-spacing:0.1em; }
+  .round-pill .rp-label{ color:var(--text-dim); text-transform:uppercase; margin-bottom:3px; }
+  .round-pill .rp-name{ color:var(--text); font-weight:700; }
+  .round-pill .rp-notes{ color:var(--text-dim); font-size:0.52rem; margin-top:2px; }
+  .round-pill.beginner{ border-color:var(--right); }
+  .round-pill.intermediate{ border-color:var(--accent); }
+  .round-pill.expert{ border-color:var(--wrong); }
+
+  /*    API key    */
+  .api-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 28px; margin-bottom:24px; }
+  .api-label{ font-size:0.58rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:12px; }
+  .api-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .api-input{ flex:1; min-width:180px; padding:9px 14px; border-radius:7px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; font-size:0.72rem; outline:none; transition:border-color 0.2s; }
+  .api-input:focus{ border-color:var(--accent2); }
+  .api-btn{ padding:9px 16px; border-radius:7px; border:1px solid var(--accent2); background:transparent; color:var(--accent2); font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .api-btn:hover{ background:var(--accent2); color:var(--bg); }
+  .api-hint{ font-size:0.57rem; color:var(--text-dim); margin-top:9px; line-height:1.6; }
+  .api-hint a{ color:var(--accent2); text-decoration:none; }
+  .api-saved{ font-size:0.58rem; color:var(--right); letter-spacing:0.1em; display:none; margin-left:4px; }
+
+  /*    Start button    */
+  .start-wrap{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .start-btn{ padding:13px 32px; border-radius:9px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-family:'Space Mono',monospace; font-size:0.78rem; letter-spacing:0.14em; cursor:pointer; transition:all 0.2s; }
+  .start-btn:hover:not(:disabled){ background:var(--accent); color:var(--bg); }
+  .start-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .start-hint{ font-size:0.58rem; color:var(--text-dim); }
+
+  /*    Test panel    */
+  #testPanel{ display:none; }
+  .test-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px 32px; margin-bottom:20px; }
+
+  /* Round badge */
+  .round-badge{ display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .rb-label{ font-size:0.55rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; }
+  .rb-name{ font-size:0.7rem; font-weight:700; letter-spacing:0.1em; }
+  .rb-name.beginner{ color:var(--right); }
+  .rb-name.intermediate{ color:var(--accent); }
+  .rb-name.expert{ color:var(--wrong); }
+
+  /* Big note display */
+  .note-stage{ text-align:center; padding:24px 0 20px; }
+  .note-instruction{ font-size:0.58rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:14px; }
+  .note-target{ font-family:'Playfair Display',serif; font-size:5.5rem; color:var(--accent2); line-height:1; margin-bottom:8px; transition:all 0.3s; }
+  .note-target.listening{ animation:notePulse 1.5s ease-in-out infinite; }
+  .note-target.correct{ color:var(--right); animation:none; }
+  .note-target.wrong{ color:var(--wrong); animation:none; }
+  @keyframes notePulse{ 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+  /* Timer ring */
+  .timer-wrap{ display:flex; justify-content:center; margin-bottom:20px; }
+  .timer-ring{ position:relative; width:72px; height:72px; }
+  .timer-ring svg{ transform:rotate(-90deg); }
+  .timer-ring .track{ fill:none; stroke:var(--border); stroke-width:4; }
+  .timer-ring .fill{ fill:none; stroke:var(--accent2); stroke-width:4; stroke-linecap:round; transition:stroke-dashoffset 0.2s linear, stroke 0.3s; }
+  .timer-ring .fill.urgent{ stroke:var(--wrong); }
+  .timer-num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:700; color:var(--accent2); }
+  .timer-num.urgent{ color:var(--wrong); }
+
+  /* Status line */
+  .status-line{ text-align:center; font-size:0.65rem; color:var(--text-dim); min-height:18px; letter-spacing:0.08em; }
+  .status-line.correct{ color:var(--right); }
+  .status-line.wrong{ color:var(--wrong); }
+  .status-line.listening{ color:var(--accent2); }
+
+  /* Detected pitch readout */
+  .pitch-readout{ text-align:center; font-size:0.6rem; color:var(--text-dim); margin-top:6px; letter-spacing:0.1em; min-height:16px; }
+
+  /* Note strip (progress across notes in this round) */
+  .note-strip{ display:flex; gap:6px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+  .ns-chip{ width:44px; height:48px; border-radius:7px; border:1px solid var(--border); background:var(--surface2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:0.68rem; font-weight:700; transition:all 0.2s; }
+  .ns-chip .ns-oct{ font-size:0.42rem; color:var(--text-dim); }
+  .ns-chip.current{ border-color:var(--accent2); color:var(--accent2); transform:scale(1.08); }
+  .ns-chip.done-correct{ border-color:var(--right); color:var(--right); background:rgba(90,224,160,0.07); }
+  .ns-chip.done-wrong{ border-color:var(--wrong); color:var(--wrong); background:rgba(224,90,90,0.07); }
+  .ns-chip.pending{ color:var(--text-dim); }
+
+  /* Round progress dots */
+  .round-dots{ display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+  .rd{ width:10px; height:10px; border-radius:50%; border:1px solid var(--border); background:var(--surface2); transition:all 0.3s; }
+  .rd.active{ border-color:var(--accent); background:var(--accent); }
+  .rd.done{ border-color:var(--right); background:var(--right); }
+
+  /* Mic status */
+  .mic-bar{ display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); margin-bottom:16px; font-size:0.62rem; }
+  .mic-dot{ width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex-shrink:0; }
+  .mic-dot.live{ background:var(--right); box-shadow:0 0 8px var(--right); animation:micPulse 1s infinite; }
+  @keyframes micPulse{ 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .mic-label{ color:var(--text-dim); }
+  .mic-label.live{ color:var(--right); }
+
+  /*    Results parchment    */
+  #resultsPanel{ display:none; }
+  .parchment{ background:#faf8f2; border:1px solid #d4cdb8; border-radius:12px; padding:32px 36px; box-shadow:0 4px 24px rgba(0,0,0,0.4); }
+  .parchment-title{ font-family:'Playfair Display',serif; font-size:1.2rem; color:#2a2118; margin-bottom:4px; font-style:italic; }
+  .parchment-sub{ font-size:0.55rem; letter-spacing:0.18em; color:#8a7a60; text-transform:uppercase; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid #d4cdb8; }
+
+  /* Score breakdown */
+  .scores-grid{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+  .score-pill{ padding:10px 16px; border-radius:8px; border:1px solid #d4cdb8; background:#f0ece0; display:flex; flex-direction:column; gap:3px; }
+  .score-pill .sp-val{ font-size:1.2rem; font-weight:700; color:#2a2118; }
+  .score-pill .sp-lbl{ font-size:0.52rem; letter-spacing:0.12em; color:#8a7a60; text-transform:uppercase; }
+  .score-pill.best{ border-color:#8a7060; }
+
+  /* Recommendation banner */
+  .rec-banner{ border-radius:10px; padding:16px 20px; margin-bottom:22px; text-align:center; }
+  .rec-banner.beginner{ background:rgba(90,224,160,0.12); border:1px solid var(--right); }
+  .rec-banner.intermediate{ background:rgba(200,169,110,0.12); border:1px solid var(--accent); }
+  .rec-banner.expert{ background:rgba(224,90,90,0.1); border:1px solid var(--wrong); }
+  .rec-label{ font-size:0.55rem; letter-spacing:0.2em; color:#8a7a60; text-transform:uppercase; margin-bottom:6px; }
+  .rec-level{ font-family:'Playfair Display',serif; font-size:1.6rem; color:#2a2118; margin-bottom:4px; }
+  .rec-level.beginner{ color:#1a6a40; }
+  .rec-level.intermediate{ color:#7a5010; }
+  .rec-level.expert{ color:#8a2020; }
+
+  /* AI analysis body */
+  .analysis-body{ font-family:'Playfair Display',serif; font-size:0.95rem; color:#2a2118; line-height:1.82; white-space:pre-wrap; }
+  .analysis-body .sec-head{ font-weight:700; display:block; margin-top:16px; margin-bottom:3px; }
+
+  /* Loading */
+  .loading-wrap{ text-align:center; padding:32px; }
+  .loading-spinner{ display:inline-block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent2); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loading-text{ font-size:0.65rem; color:var(--text-dim); letter-spacing:0.1em; }
+
+  @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor{ display:inline-block; width:2px; height:1em; background:#5a4a2a; margin-left:2px; animation:blink 1s infinite; vertical-align:text-bottom; }
+
+  .retry-btn{ margin-top:18px; padding:10px 24px; border-radius:8px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-family:'Space Mono',monospace; font-size:0.68rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.2s; }
+  .retry-btn:hover{ background:var(--accent); color:var(--bg); }
+
+  @media(max-width:600px){
+    main{ padding:18px 14px; }
+    .intro-card,.api-card,.test-card,.parchment{ padding:18px 16px; }
+    .note-target{ font-size:4rem; }
+  }
+</style>
+<script src="groq-config.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>SKILL ASSESSMENT</span></div>
+  <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+</header>
+
+<main>
+
+  <!-- Intro -->
+  <div class="intro-card" id="introCard">
+    <div class="intro-title">Skill Assessment</div>
+    <div class="intro-sub">3 rounds · no tolerance · exact pitch only</div>
+    <div class="intro-body">
+      Play each displayed note as accurately as you can. You have <strong>4 seconds</strong> per note.
+      There is <strong>no semitone forgiveness</strong> — this test measures your actual pitch accuracy.
+      After all three rounds, Groq AI will analyse your results and recommend which level to select in the dashboard.
+      <br><br>
+      No login required. Your microphone is used locally — nothing is recorded or sent to any server except the final score summary to Groq for analysis.
+    </div>
+    <div class="rounds-preview">
+      <div class="round-pill beginner">
+        <div class="rp-label">Round 1</div>
+        <div class="rp-name">Beginner</div>
+        <div class="rp-notes">4 white keys · randomised</div>
+      </div>
+      <div class="round-pill intermediate">
+        <div class="rp-label">Round 2</div>
+        <div class="rp-name">Intermediate</div>
+        <div class="rp-notes">5 chromatic keys · randomised</div>
+      </div>
+      <div class="round-pill expert">
+        <div class="rp-label">Round 3</div>
+        <div class="rp-name">Expert</div>
+        <div class="rp-notes">6 keys across 5 octaves · randomised</div>
+      </div>
+    </div>
+    <br>
+    <div class="start-wrap">
+      <button class="start-btn" id="startBtn" onclick="startAssessment()">▶ BEGIN ASSESSMENT</button>
+      <span class="start-hint" id="startHint">Microphone access will be requested</span>
+    </div>
+  </div>
+
+  <!-- Test panel -->
+  <div id="testPanel">
+    <div class="test-card">
+      <!-- Round dots -->
+      <div class="round-dots">
+        <div class="rd" id="rd0"></div>
+        <div class="rd" id="rd1"></div>
+        <div class="rd" id="rd2"></div>
+      </div>
+
+      <!-- Round badge -->
+      <div class="round-badge">
+        <span class="rb-label">Round</span>
+        <span class="rb-name" id="roundName">—</span>
+      </div>
+
+      <!-- Mic status -->
+      <div class="mic-bar">
+        <div class="mic-dot live" id="micDot"></div>
+        <span class="mic-label live" id="micLabel">Microphone active</span>
+      </div>
+
+      <!-- Note display -->
+      <div class="note-stage">
+        <div class="note-instruction">Play this note</div>
+        <div class="note-target" id="noteTarget">—</div>
+        <div class="status-line" id="statusLine">Waiting…</div>
+        <div class="pitch-readout" id="pitchReadout"></div>
+      </div>
+
+      <!-- Timer ring -->
+      <div class="timer-wrap">
+        <div class="timer-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="track" cx="36" cy="36" r="30"/>
+            <circle class="fill" id="timerFill" cx="36" cy="36" r="30"
+              stroke-dasharray="188.5" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-num" id="timerNum">4</div>
+        </div>
+      </div>
+
+      <!-- Note strip -->
+      <div class="note-strip" id="noteStrip"></div>
+    </div>
+  </div>
+
+  <!-- Results panel -->
+  <div id="resultsPanel">
+    <div class="parchment" id="parchment">
+      <div class="parchment-title">Assessment Results</div>
+      <div class="parchment-sub" id="parchSub">—</div>
+
+      <!-- Score breakdown -->
+      <div class="scores-grid" id="scoresGrid"></div>
+
+      <!-- Recommendation banner (filled by JS) -->
+      <div class="rec-banner" id="recBanner">
+        <div class="rec-label">Recommended level</div>
+        <div class="rec-level" id="recLevel">—</div>
+      </div>
+
+      <!-- AI analysis -->
+      <div id="analysisWrap">
+        <div class="loading-wrap" id="loadingWrap">
+          <div class="loading-spinner"></div>
+          <div class="loading-text" id="loadingText">Sending results to Groq…</div>
+        </div>
+        <div class="analysis-body" id="analysisBody" style="display:none;"></div>
+      </div>
+
+      <div style="text-align:center;margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="retry-btn" onclick="retryAssessment()">↺ RETRY ASSESSMENT</button>
+        <a href="lesson-plan.html" id="lessonPlanBtn" style="display:inline-block;padding:10px 24px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">✦ MAKE MY LESSON PLAN →</a>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+//     CONSTANTS                                                                 
+const NOTE_WINDOW_MS  = 4000;  // time per note
+const NOTE_NAMES      = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+// Enharmonic aliases so Bb3 matches A#3, Eb4 matches D#4 etc.
+const ENHARMONIC = { 'Bb':'A#','Eb':'D#','Ab':'G#','Db':'C#','Gb':'F#' };
+
+// Note pools per level — a random subset is drawn at the start of each round
+// so the sequence is different every attempt and cannot be memorised.
+const POOLS = {
+  beginner: {
+    // White keys only, octaves 3–5. 21 notes → pick 4 each run.
+    pool: [
+      'C3','D3','E3','F3','G3','A3','B3',
+      'C4','D4','E4','F4','G4','A4','B4',
+      'C5','D5','E5','F5','G5','A5','B5',
+    ],
+    pick: 4,
+    id: 'beginner', name: 'Beginner',
+    desc: 'White keys only — random selection each attempt'
+  },
+  intermediate: {
+    // Full chromatic, octaves 3–5. 36 notes → pick 5 each run.
+    pool: [
+      'C3','C#3','D3','Eb3','E3','F3','F#3','G3','Ab3','A3','Bb3','B3',
+      'C4','C#4','D4','Eb4','E4','F4','F#4','G4','Ab4','A4','Bb4','B4',
+      'C5','C#5','D5','Eb5','E5','F5','F#5','G5','Ab5','A5','Bb5','B5',
+    ],
+    pick: 5,
+    id: 'intermediate', name: 'Intermediate',
+    desc: 'Chromatic across 3 octaves — random selection each attempt'
+  },
+  expert: {
+    // Full chromatic, octaves 2–6. 60 notes → pick 6 each run.
+    pool: [
+      'C2','C#2','D2','Eb2','E2','F2','F#2','G2','Ab2','A2','Bb2','B2',
+      'C3','C#3','D3','Eb3','E3','F3','F#3','G3','Ab3','A3','Bb3','B3',
+      'C4','C#4','D4','Eb4','E4','F4','F#4','G4','Ab4','A4','Bb4','B4',
+      'C5','C#5','D5','Eb5','E5','F5','F#5','G5','Ab5','A5','Bb5','B5',
+      'C6','C#6','D6','Eb6','E6','F6','F#6','G6','Ab6','A6','Bb6','B6',
+    ],
+    pick: 6,
+    id: 'expert', name: 'Expert',
+    desc: 'Full chromatic across 5 octaves — random selection each attempt'
+  },
+};
+
+// Fisher-Yates shuffle — returns a new randomised array
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+// Build the ROUNDS array with freshly randomised note lists each call
+function buildRounds(){
+  return ['beginner','intermediate','expert'].map(function(key){
+    const cfg=POOLS[key];
+    return {
+      id:   cfg.id,
+      name: cfg.name,
+      desc: cfg.desc,
+      notes: shuffle(cfg.pool).slice(0, cfg.pick),
+    };
+  });
+}
+
+// ROUNDS is regenerated at the start of each assessment attempt
+let ROUNDS = buildRounds();
+
+//     PITCH UTILITIES                                                           
+function freqToMidi(f){ return 69 + 12 * Math.log2(f / 440); }
+function midiToName(m){ return NOTE_NAMES[m % 12]; }
+function midiToOctave(m){ return Math.floor(m / 12) - 1; }
+function midiToFull(m){ return midiToName(m) + midiToOctave(m); }
+
+function noteToMidi(n){
+  // Handle enharmonics: Bb3 → A#3
+  const canon = n.replace(/^(Bb|Eb|Ab|Db|Gb)/, k => ENHARMONIC[k]);
+  const mm = canon.match(/([A-G]#?)(\d)/);
+  if(!mm) return 60;
+  return (parseInt(mm[2]) + 1) * 12 + NOTE_NAMES.indexOf(mm[1]);
+}
+
+// Display name keeps the original (e.g. Bb3 shown as Bb3, not A#3)
+function noteDisplayName(n){
+  return n.replace('#', '♯').replace('b', '♭');
+}
+
+function yin(buf, sr, thresh=0.15){
+  const half = Math.floor(buf.length / 2);
+  const diff = new Float32Array(half);
+  for(let tau=0; tau<half; tau++)
+    for(let j=0; j<half; j++){ const d=buf[j]-buf[j+tau]; diff[tau]+=d*d; }
+  const cmnd = new Float32Array(half); cmnd[0]=1; let run=0;
+  for(let tau=1; tau<half; tau++){
+    run += diff[tau];
+    cmnd[tau] = diff[tau] * tau / (run || 1);
+  }
+  let tau = -1;
+  for(let t=2; t<half; t++){
+    if(cmnd[t] < thresh){
+      while(t+1 < half && cmnd[t+1] < cmnd[t]) t++;
+      tau = t; break;
+    }
+  }
+  if(tau < 2) return -1;
+  const p = tau>1 ? cmnd[tau-1] : cmnd[tau];
+  const nxt = tau<half-1 ? cmnd[tau+1] : cmnd[tau];
+  return sr / (tau + (nxt-p) / (2*(2*cmnd[tau]-p-nxt) || 0.0001));
+}
+
+//     STATE                                                                     
+let audioCtx=null, analyser=null, micStream=null, animFrame=null;
+let currentRound=0, currentNoteIdx=0;
+let noteTimer=null, noteTimerStart=0;
+let results=[]; // [{round, note, detected, correct, detectedName}]
+let prevRmsSmooth=0;
+let onsetCooldownUntil=0;
+let pitchStableCandidate=-1, pitchStableCount=0;
+let noteAccepted=false; // true once a note is accepted, locks out further detections this slot
+
+//     MIC                                                                      
+async function startMic(){
+  micStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true }, video:false });
+  audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+  analyser  = audioCtx.createAnalyser();
+  analyser.fftSize = 4096;
+  analyser.smoothingTimeConstant = 0.1;
+  const src = audioCtx.createMediaStreamSource(micStream);
+  src.connect(analyser);
+}
+
+function stopMic(){
+  if(animFrame) cancelAnimationFrame(animFrame);
+  if(micStream) micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx)  audioCtx.close();
+  animFrame=null; audioCtx=null; analyser=null; micStream=null;
+  prevRmsSmooth=0; pitchStableCandidate=-1; pitchStableCount=0;
+}
+
+//     AUDIO LOOP                                                                
+function audioLoop(){
+  animFrame = requestAnimationFrame(audioLoop);
+  if(!analyser) return;
+
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+
+  let rms=0;
+  for(let i=0;i<buf.length;i++) rms+=buf[i]*buf[i];
+  rms = Math.sqrt(rms/buf.length);
+
+  const now = Date.now();
+  const rmsRatio = rms / (prevRmsSmooth + 0.001);
+  prevRmsSmooth = prevRmsSmooth * 0.88 + rms * 0.12;
+
+  const isOnset = rms > 0.012 && rmsRatio > 1.15 && now > onsetCooldownUntil;
+
+  const freq   = yin(buf, audioCtx.sampleRate, 0.12);
+  const inRange = freq >= 27.5 && freq <= 4200;
+  const rawMidi = inRange ? Math.round(freqToMidi(freq)) : -1;
+
+  if(rawMidi >= 21 && rawMidi <= 108){
+    if(rawMidi === pitchStableCandidate) pitchStableCount++;
+    else { pitchStableCandidate=rawMidi; pitchStableCount=1; }
+  } else { pitchStableCandidate=-1; pitchStableCount=0; }
+
+  const isStable = pitchStableCount === 5 && now > onsetCooldownUntil && rms > 0.006;
+
+  if(!isOnset && !isStable) return;
+  if(!inRange) return;
+
+  onsetCooldownUntil = now + 400;
+  pitchStableCount = 0;
+
+  const detectedMidi = Math.round(freqToMidi(freq));
+  handleDetection(detectedMidi);
+}
+
+//     DETECTION HANDLER                                                        
+function handleDetection(detectedMidi){
+  if(noteAccepted) return;
+
+  const round = ROUNDS[currentRound];
+  const expectedNote = round.notes[currentNoteIdx];
+  const expectedMidi = noteToMidi(expectedNote);
+  const detectedName = midiToFull(detectedMidi);
+
+  // Update live readout
+  document.getElementById('pitchReadout').textContent = `Detected: ${detectedName}`;
+
+  // Exact match only — zero tolerance
+  const correct = detectedMidi === expectedMidi;
+
+  if(correct){
+    noteAccepted = true;
+    recordResult(currentRound, expectedNote, detectedMidi, true, detectedName);
+    showNoteResult(true, detectedName);
+    clearTimeout(noteTimer);
+    setTimeout(()=>advanceNote(), 700);
+  } else {
+    // Show what was detected but don't advance — keep listening until timer expires
+    setStatus(`Heard ${detectedName} — keep trying`, 'wrong');
+  }
+}
+
+function recordResult(roundIdx, note, detectedMidi, correct, detectedName){
+  results.push({ round:roundIdx, note, detected:detectedMidi, correct, detectedName });
+}
+
+//     NOTE TIMER                                                                
+function startNoteTimer(){
+  noteTimerStart = Date.now();
+  noteAccepted = false;
+
+  // Animate the ring every ~50ms
+  const fill   = document.getElementById('timerFill');
+  const numEl  = document.getElementById('timerNum');
+  const CIRC   = 188.5;
+  let rafTimer;
+
+  function tick(){
+    const elapsed = Date.now() - noteTimerStart;
+    const remaining = Math.max(0, NOTE_WINDOW_MS - elapsed);
+    const pct = remaining / NOTE_WINDOW_MS;
+    fill.style.strokeDashoffset = CIRC * (1 - pct);
+    numEl.textContent = Math.ceil(remaining / 1000);
+    const urgent = remaining < 1200;
+    fill.classList.toggle('urgent', urgent);
+    numEl.classList.toggle('urgent', urgent);
+    if(remaining > 0) rafTimer = requestAnimationFrame(tick);
+  }
+  rafTimer = requestAnimationFrame(tick);
+
+  noteTimer = setTimeout(()=>{
+    cancelAnimationFrame(rafTimer);
+    if(noteAccepted) return;
+    // Time expired — record as wrong
+    const round = ROUNDS[currentRound];
+    const expectedNote = round.notes[currentNoteIdx];
+    recordResult(currentRound, expectedNote, -1, false, '—');
+    showNoteResult(false, null);
+    setTimeout(()=>advanceNote(), 700);
+  }, NOTE_WINDOW_MS);
+}
+
+//     UI HELPERS                                                                
+function setStatus(msg, type=''){
+  const el = document.getElementById('statusLine');
+  el.textContent = msg;
+  el.className = 'status-line ' + type;
+}
+
+function showNoteResult(correct, detectedName){
+  const el = document.getElementById('noteTarget');
+  el.classList.remove('listening');
+  el.classList.add(correct ? 'correct' : 'wrong');
+  setStatus(correct ? `✓ Correct — ${detectedName}` : '✗ Time expired — missed', correct ? 'correct' : 'wrong');
+
+  // Update strip chip
+  const chips = document.querySelectorAll('.ns-chip');
+  if(chips[currentNoteIdx]){
+    chips[currentNoteIdx].classList.remove('current');
+    chips[currentNoteIdx].classList.add(correct ? 'done-correct' : 'done-wrong');
+  }
+}
+
+function buildNoteStrip(notes){
+  const strip = document.getElementById('noteStrip');
+  strip.innerHTML = '';
+  notes.forEach((n, i) => {
+    const ch = document.createElement('div');
+    ch.className = 'ns-chip ' + (i===0 ? 'current' : 'pending');
+    const name = n.replace(/\d/,'');
+    const oct  = n.match(/\d/)?.[0] || '';
+    ch.innerHTML = `<span>${noteDisplayName(name)}</span><span class="ns-oct">${oct}</span>`;
+    strip.appendChild(ch);
+  });
+}
+
+function updateRoundDots(){
+  for(let i=0;i<3;i++){
+    const el = document.getElementById('rd'+i);
+    if(i < currentRound)        el.className = 'rd done';
+    else if(i === currentRound) el.className = 'rd active';
+    else                         el.className = 'rd';
+  }
+}
+
+//     FLOW                                                                      
+async function startAssessment(){
+  const btn = document.getElementById('startBtn');
+  const hint = document.getElementById('startHint');
+  btn.disabled = true;
+  hint.textContent = 'Requesting microphone access…';
+
+  try{
+    await startMic();
+  } catch(e){
+    hint.textContent = 'Microphone access denied. Allow it in browser settings and try again.';
+    btn.disabled = false;
+    return;
+  }
+
+  document.getElementById('introCard').style.display = 'none';
+  document.getElementById('testPanel').style.display = 'block';
+
+  ROUNDS = buildRounds();  // fresh random note selection every attempt
+  currentRound = 0;
+  currentNoteIdx = 0;
+  results = [];
+  audioLoop();
+  startRound();
+}
+
+function startRound(){
+  const round = ROUNDS[currentRound];
+  document.getElementById('roundName').textContent  = round.name;
+  document.getElementById('roundName').className    = 'rb-name ' + round.id;
+  updateRoundDots();
+  buildNoteStrip(round.notes);
+  currentNoteIdx = 0;
+  showNote();
+}
+
+function showNote(){
+  const round = ROUNDS[currentRound];
+  const note  = round.notes[currentNoteIdx];
+  const el    = document.getElementById('noteTarget');
+
+  el.textContent = noteDisplayName(note.replace(/\d/,'')) + note.match(/\d/)[0];
+  el.className   = 'note-target listening';
+  setStatus('Listening…', 'listening');
+  document.getElementById('pitchReadout').textContent = '';
+
+  // Reset ring
+  document.getElementById('timerFill').style.strokeDashoffset = '0';
+  document.getElementById('timerFill').classList.remove('urgent');
+  document.getElementById('timerNum').classList.remove('urgent');
+  document.getElementById('timerNum').textContent = '4';
+
+  // Update strip
+  const chips = document.querySelectorAll('.ns-chip');
+  chips.forEach((c,i)=>{ if(i===currentNoteIdx) c.classList.add('current'); });
+
+  startNoteTimer();
+}
+
+function advanceNote(){
+  const round = ROUNDS[currentRound];
+  currentNoteIdx++;
+
+  if(currentNoteIdx >= round.notes.length){
+    // Round done
+    currentRound++;
+    if(currentRound >= ROUNDS.length){
+      finishAssessment();
+    } else {
+      // Brief pause between rounds
+      setStatus('Round complete — next round starting…', '');
+      document.getElementById('noteTarget').textContent = '→';
+      document.getElementById('noteTarget').className = 'note-target';
+      setTimeout(()=>startRound(), 1400);
+    }
+  } else {
+    // Update strip current marker
+    const chips = document.querySelectorAll('.ns-chip');
+    chips[currentNoteIdx]?.classList.add('current');
+    chips[currentNoteIdx]?.classList.remove('pending');
+    setTimeout(()=>showNote(), 300);
+  }
+}
+
+function finishAssessment(){
+  stopMic();
+  document.getElementById('testPanel').style.display = 'none';
+  showResults();
+}
+
+//     RESULTS                                                                  
+function quickRecommend(roundScores){
+  const b = roundScores[0].pct;
+  const i = roundScores[1].pct;
+  const e = roundScores[2].pct;
+  if(b >= 75 && i >= 75 && e >= 60) return 'expert';
+  if(b >= 75 && i >= 50)            return 'intermediate';
+  return 'beginner';
+}
+
+function showResults(){
+  // Save result so lesson-plan.html can read it
+  const roundScores_pre = ROUNDS.map((r, ri) => {
+    const rr = results.filter(x => x.round === ri);
+    return { pct: Math.round(rr.filter(x => x.correct).length / r.notes.length * 100) };
+  });
+  const rec_pre = quickRecommend(roundScores_pre);
+  sessionStorage.setItem('pc_assessment_result', JSON.stringify({
+    recommendedLevel: rec_pre,
+    scores: {
+      beginner:     roundScores_pre[0]?.pct ?? 0,
+      intermediate: roundScores_pre[1]?.pct ?? 0,
+      expert:       roundScores_pre[2]?.pct ?? 0,
+    }
+  }));
+
+  document.getElementById('resultsPanel').style.display = 'block';
+  document.getElementById('resultsPanel').scrollIntoView({ behavior:'smooth' });
+
+  // Score per round
+  const roundScores = ROUNDS.map((r, ri)=>{
+    const roundResults = results.filter(x => x.round === ri);
+    const correct = roundResults.filter(x => x.correct).length;
+    const total   = r.notes.length;
+    return { name:r.name, id:r.id, correct, total, pct:Math.round(correct/total*100) };
+  });
+
+  const total   = results.length;
+  const correct = results.filter(x=>x.correct).length;
+  const overall = Math.round(correct/total*100);
+
+  document.getElementById('parchSub').textContent =
+    `${correct}/${total} notes correct · exact pitch · no tolerance`;
+
+  // Score pills
+  const grid = document.getElementById('scoresGrid');
+  grid.innerHTML = '';
+  roundScores.forEach(s=>{
+    const d = document.createElement('div');
+    d.className = 'score-pill' + (s.pct===100?' best':'');
+    d.innerHTML = `<span class="sp-val">${s.pct}%</span><span class="sp-lbl">${s.name}</span>`;
+    grid.appendChild(d);
+  });
+  const od = document.createElement('div');
+  od.className = 'score-pill';
+  od.innerHTML = `<span class="sp-val">${overall}%</span><span class="sp-lbl">Overall</span>`;
+  grid.appendChild(od);
+
+  // Quick rule-based recommendation (shown immediately, before Groq responds)
+  const rec = quickRecommend(roundScores);
+  const banner = document.getElementById('recBanner');
+  banner.className = 'rec-banner ' + rec;
+  document.getElementById('recLevel').textContent   = rec.charAt(0).toUpperCase() + rec.slice(1);
+  document.getElementById('recLevel').className     = 'rec-level ' + rec;
+
+  // Groq analysis
+  const key = GROQ_KEY;
+  if(key && key !== 'YOUR_GROQ_API_KEY_HERE'){
+    fetchGroqAnalysis(key, roundScores, overall, rec);
+  } else {
+    document.getElementById('loadingWrap').innerHTML =
+      `<div style="font-size:0.65rem;color:var(--text-dim);text-align:center;">
+        No Groq key set — add it to groq-config.js to get a written analysis.
+      </div>`;
+  }
+}
+
+
+//     GROQ                                                                      
+function buildPrompt(roundScores, overall, rec){
+  const noteBreakdown = results.map((r,i)=>{
+    const round = ROUNDS[r.round];
+    return `  Note ${i+1} (${round.name}): expected ${r.note} — ${r.correct ? 'CORRECT (detected '+r.detectedName+')' : 'MISSED (detected '+(r.detectedName==='—'?'nothing':r.detectedName)+')'}`;
+  }).join('\n');
+
+  return `You are a piano teacher analysing a student's skill assessment results.
+
+The student played a 3-round pitch accuracy test with ZERO semitone tolerance — exact pitch only.
+
+RESULTS:
+- Beginner round (${ROUNDS[0].notes.join(', ')}): ${roundScores[0].correct}/${roundScores[0].total} correct (${roundScores[0].pct}%)
+- Intermediate round (${ROUNDS[1].notes.join(', ')}): ${roundScores[1].correct}/${roundScores[1].total} correct (${roundScores[1].pct}%)
+- Expert round (${ROUNDS[2].notes.join(', ')}): ${roundScores[2].correct}/${roundScores[2].total} correct (${roundScores[2].pct}%)
+- Overall: ${overall}%
+
+NOTE-BY-NOTE BREAKDOWN:
+${noteBreakdown}
+
+ALGORITHMIC RECOMMENDATION: ${rec}
+
+Please give a brief, honest assessment in plain text (no markdown symbols). Use these section headings:
+
+WHAT THE SCORES SHOW
+Interpret what the round-by-round pattern reveals about the student's level.
+
+RECOMMENDATION
+State clearly which level they should select (Beginner, Intermediate, or Expert) and why. If the algorithmic recommendation seems right, confirm it. If you disagree, say so and explain.
+
+ONE THING TO WORK ON
+Give one specific, actionable tip based on what they struggled with.
+
+Keep it under 200 words. Speak directly to the student.`;
+}
+
+async function fetchGroqAnalysis(key, roundScores, overall, rec){
+  const loadEl  = document.getElementById('loadingWrap');
+  const bodyEl  = document.getElementById('analysisBody');
+  loadEl.style.display  = 'block';
+  bodyEl.style.display  = 'none';
+
+  try{
+    const resp = await fetch(GROQ_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+      body: JSON.stringify({
+        model:       GROQ_MODEL,
+        messages:    [{ role:'user', content: buildPrompt(roundScores, overall, rec) }],
+        temperature: 0.65,
+        max_tokens:  400,
+        stream:      true
+      })
+    });
+
+    if(resp.status===401||resp.status===403) throw new Error('Invalid API key.');
+    if(resp.status===429) throw new Error('Rate limited — wait a moment and retry.');
+    if(!resp.ok) throw new Error(`API error ${resp.status}`);
+
+    loadEl.style.display  = 'none';
+    bodyEl.style.display  = 'block';
+
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    bodyEl.appendChild(cursor);
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', fullText = '';
+
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, { stream:true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if(data==='[DONE]') continue;
+        try{
+          const chunk = JSON.parse(data)?.choices?.[0]?.delta?.content || '';
+          if(chunk){
+            fullText += chunk;
+            bodyEl.innerHTML = formatAnalysis(fullText);
+            bodyEl.appendChild(cursor);
+          }
+        }catch(e){}
+      }
+    }
+    bodyEl.innerHTML = formatAnalysis(fullText);
+
+  }catch(err){
+    loadEl.innerHTML = `<div style="font-size:0.65rem;color:#c44;text-align:center;">Error: ${err.message}</div>`;
+  }
+}
+
+function formatAnalysis(text){
+  const esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/^([A-Z][A-Z\s]{3,})$/gm, '<span class="sec-head">$1</span>');
+}
+
+//     RETRY                                                                     
+function retryAssessment(){
+  document.getElementById('resultsPanel').style.display = 'none';
+  document.getElementById('introCard').style.display    = 'block';
+  document.getElementById('startBtn').disabled          = false;
+  document.getElementById('startHint').textContent      = 'Microphone access will be requested';
+  results = []; currentRound = 0; currentNoteIdx = 0;
+}
+
+//     INIT                                                                      
+</script>
+</body>
+</html>

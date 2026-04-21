@@ -1,0 +1,33 @@
+# Piano Coach — Python Requirements
+# Install all with: pip install -r requirements.txt
+#
+# Split into sections:
+#   1. Web server (app.py)
+#   2. AI / training (phase3_model.py, phase4_train.py)
+#   3. Dataset building (build_dataset.py)
+#   4. Shared utilities
+
+# ── Web server ────────────────────────────────────────────────────────────────
+flask>=2.3
+flask-cors>=4.0
+flask-bcrypt>=1.0.1
+flask-jwt-extended>=4.5
+flask-sqlalchemy>=3.0
+
+# ── AI / PyTorch ──────────────────────────────────────────────────────────────
+# CPU-only PyTorch (smaller download, works on any machine):
+torch>=2.0
+# If you have an NVIDIA GPU, replace the line above with:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# (do not put GPU torch in this file — it needs the special index URL)
+
+# ── Training utilities ────────────────────────────────────────────────────────
+scikit-learn>=1.3
+h5py>=3.9
+tqdm>=4.65
+numpy>=1.24
+
+# ── Audio processing ──────────────────────────────────────────────────────────
+librosa>=0.10
+pretty_midi>=0.2.10
+soundfile>=0.12        # librosa backend for reading audio files

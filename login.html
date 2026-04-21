@@ -124,7 +124,6 @@
   .level-card input[type=radio]{ display:none; }
   .level-name{ font-size:0.75rem; font-weight:700; margin-bottom:4px; }
   .level-card.selected .level-name{ color:var(--accent); }
-  .level-desc{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; }
 
   .panel{ display:none; }
   .panel.active{ display:block; }
@@ -133,6 +132,12 @@
     .card{ padding:32px 24px; margin:16px; }
   }
 </style>
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <script src="api-config.js"></script>
 </head>
 <body>
 
@@ -191,12 +196,10 @@
       <label class="level-card selected" id="lvlBegCard">
         <input type="radio" name="level" value="beginner" checked onchange="selectLevel('beginner')">
         <div class="level-name">Beginner</div>
-        <div class="level-desc">YIN + CNN · single notes · forgiving pitch</div>
       </label>
       <label class="level-card" id="lvlIntCard">
         <input type="radio" name="level" value="intermediate" onchange="selectLevel('intermediate')">
         <div class="level-name">Intermediate</div>
-        <div class="level-desc">CNN only mode · polyphonic · tighter tolerance</div>
       </label>
     </div>
 
@@ -210,109 +213,210 @@
 </div>
 
 <script>
-const API = 'http://127.0.0.1:5000/api';
+const API = getApiUrl();
 let selectedLevel = 'beginner';
 
-// ── Build background keys ──
+// Email regex (good balance between strict and practical)
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+//Build background keys
 const bgKeys = document.getElementById('bgKeys');
-for(let i=0;i<30;i++){
-  const k=document.createElement('div'); k.className='bg-key';
+for(let i = 0; i < 20; i++){  // Reduced from 30 for performance
+  const k = document.createElement('div');
+  k.className = 'bg-key';
   bgKeys.appendChild(k);
 }
 
-// ── Tab switching ──
+//Tab switching
 function showTab(tab){
-  document.querySelectorAll('.tab').forEach((t,i)=>
-    t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
-  document.getElementById('loginPanel').classList.toggle('active',    tab==='login');
+  document.querySelectorAll('.tab').forEach((t,i) =>
+    t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register')));
+  
+  document.getElementById('loginPanel').classList.toggle('active', tab==='login');
   document.getElementById('registerPanel').classList.toggle('active', tab==='register');
   clearMessages();
 }
 
 function clearMessages(){
-  ['loginMsg','registerMsg'].forEach(id=>{
-    const el=document.getElementById(id); el.className='msg'; el.textContent='';
+  ['loginMsg','registerMsg'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'msg';
+    el.textContent = '';
   });
 }
 
 function showMsg(id, type, text){
-  const el=document.getElementById(id); el.className='msg '+type; el.textContent=text;
+  const el = document.getElementById(id);
+  el.className = `msg ${type}`;
+  el.textContent = text;
 }
 
+//Email Validation Function
+function isValidEmail(email) {
+  return EMAIL_REGEX.test(email);
+}
+
+// Real-time email validation
+function validateEmailField(inputId, msgId) {
+  const input = document.getElementById(inputId);
+  const msgContainer = document.getElementById(msgId);
+  // Validate on blur (when user leaves the field)
+  input.addEventListener('blur', () => {
+    const email = input.value.trim();
+    if (email && !isValidEmail(email)) {
+      input.classList.add('error');
+      showMsg(msgId, 'error', 'Please enter a valid email address');
+    } else {
+      input.classList.remove('error');
+      if (msgContainer.classList.contains('error')) {
+        msgContainer.className = 'msg';
+        msgContainer.textContent = '';
+      }
+    }
+  });
+}
+
+// Apply real-time validation
+validateEmailField('loginEmail', 'loginMsg');
+validateEmailField('regEmail', 'registerMsg');
+
+//Set Loading State
 function setLoading(btnId, loading, label){
-  const btn=document.getElementById(btnId);
-  btn.disabled=loading;
-  btn.innerHTML=loading?`<span class="spinner"></span> PLEASE WAIT…`:label;
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? 
+    `<span class="spinner"></span> PLEASE WAIT…` : label;
 }
 
+//Select Level
 function selectLevel(level){
-  selectedLevel=level;
-  document.getElementById('lvlBegCard').classList.toggle('selected',level==='beginner');
-  document.getElementById('lvlIntCard').classList.toggle('selected',level==='intermediate');
+  selectedLevel = level;
+  document.getElementById('lvlBegCard').classList.toggle('selected', level==='beginner');
+  document.getElementById('lvlIntCard').classList.toggle('selected', level==='intermediate');
 }
 
-// Enter key submits
-document.addEventListener('keydown', e=>{
-  if(e.key!=='Enter') return;
-  if(document.getElementById('loginPanel').classList.contains('active'))    doLogin();
-  else doRegister();
+// Login function
+async function doLogin(){
+  // Get and trim input values
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  //clear previous messages and errors
+  clearMessages();
+  //Validate inputs
+  if(!email || !pass){
+    showMsg('loginMsg', 'error', 'Please fill in all fields.');
+    return;
+  }
+  if(!isValidEmail(email)){
+    showMsg('loginMsg', 'error', 'Please enter a valid email address.');
+    document.getElementById('loginEmail').classList.add('error');
+    return;
+  }
+  //Show loading state on login button
+  setLoading('loginBtn', true, 'SIGN IN');
+
+  try {
+      //Make API call to login endpoint
+    const r = await fetch(API + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    //Parse response
+    const d = await r.json();
+    //Check if login was successful
+    if(!r.ok){
+      showMsg('loginMsg', 'error', d.error || 'Login failed.');
+      return;
+    }
+
+    //Save token and user info to localStorage
+    localStorage.setItem('pc_token', d.token);
+    localStorage.setItem('pc_user', JSON.stringify(d.user));
+    //Show success message and redirect to dashboard
+    showMsg('loginMsg', 'success', `Welcome back, ${d.user.username}! Redirecting…`);
+    setTimeout(() => window.location.href = 'dashboard.html', 900);
+  } catch(e){
+    //Handle network errors or unexpected issues
+    showMsg('loginMsg', 'error', 'Cannot reach server. Please try again.');
+  } finally {
+    //Reset login button state
+    setLoading('loginBtn', false, 'SIGN IN');
+  }
+}
+
+//Register function
+async function doRegister(){
+  //Get and trim input values
+  const username = document.getElementById('regUsername').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const pass     = document.getElementById('regPass').value;
+  //clear previous messages and errors
+  clearMessages();
+  //Validate inputs
+  if(!username || !email || !pass){
+    showMsg('registerMsg', 'error', 'Please fill in all fields.');
+    return;
+  }
+  if(!isValidEmail(email)){
+    showMsg('registerMsg', 'error', 'Please enter a valid email address.');
+    document.getElementById('regEmail').classList.add('error');
+    return;
+  }
+  if(pass.length < 6){
+    showMsg('registerMsg', 'error', 'Password must be at least 6 characters.');
+    return;
+  }
+  if(username.length < 3){
+    showMsg('registerMsg', 'error', 'Username must be at least 3 characters.');
+    return;
+  }
+  //Show loading state on register button
+  setLoading('registerBtn', true, 'CREATE ACCOUNT');
+  //Make API call to register endpoint
+  try {
+    const r = await fetch(API + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        username, 
+        email, 
+        password: pass, 
+        level: selectedLevel 
+      })
+    });
+    //Parse response
+    const d = await r.json();
+    //Check if registration was successful
+    if(!r.ok){
+      // Backend should return clear messages like:
+      // "Email already registered" or "Username is already taken"
+      showMsg('registerMsg', 'error', d.error || 'Registration failed.');
+      return;
+    }
+    //Save token and user info to localStorage
+    localStorage.setItem('pc_token', d.token);
+    localStorage.setItem('pc_user', JSON.stringify(d.user));
+    //Show success message and redirect to dashboard
+    showMsg('registerMsg', 'success', 'Account created successfully! Redirecting…');
+    setTimeout(() => window.location.href = 'dashboard.html', 900);
+  } catch(e){
+    showMsg('registerMsg', 'error', 'Cannot reach server. Is app.py running?');
+  } finally {
+    setLoading('registerBtn', false, 'CREATE ACCOUNT');
+  }
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    if(document.getElementById('loginPanel').classList.contains('active')) doLogin();
+    else doRegister();
+  }
 });
 
-// ── LOGIN ──
-async function doLogin(){
-  const email=document.getElementById('loginEmail').value.trim();
-  const pass =document.getElementById('loginPass').value;
-  if(!email||!pass){ showMsg('loginMsg','error','Please fill in all fields.'); return; }
-
-  setLoading('loginBtn',true,'SIGN IN');
-  try{
-    const r=await fetch(API+'/login',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass})
-    });
-    const d=await r.json();
-    if(!r.ok){ showMsg('loginMsg','error',d.error||'Login failed.'); return; }
-    // Save token + user
-    localStorage.setItem('pc_token', d.token);
-    localStorage.setItem('pc_user',  JSON.stringify(d.user));
-    showMsg('loginMsg','success','Welcome back, '+d.user.username+'! Redirecting…');
-    setTimeout(()=>window.location.href='dashboard.html', 900);
-  }catch(e){
-    showMsg('loginMsg','error','Cannot reach server. Is app.py running?');
-  }finally{
-    setLoading('loginBtn',false,'SIGN IN');
-  }
+// Auto redirect if already logged in
+if(localStorage.getItem('pc_token')) {
+  window.location.href = 'dashboard.html';
 }
-
-// ── REGISTER ──
-async function doRegister(){
-  const username=document.getElementById('regUsername').value.trim();
-  const email   =document.getElementById('regEmail').value.trim();
-  const pass    =document.getElementById('regPass').value;
-  if(!username||!email||!pass){ showMsg('registerMsg','error','Please fill in all fields.'); return; }
-  if(pass.length<6){ showMsg('registerMsg','error','Password must be at least 6 characters.'); return; }
-
-  setLoading('registerBtn',true,'CREATE ACCOUNT');
-  try{
-    const r=await fetch(API+'/register',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username,email,password:pass,level:selectedLevel})
-    });
-    const d=await r.json();
-    if(!r.ok){ showMsg('registerMsg','error',d.error||'Registration failed.'); return; }
-    localStorage.setItem('pc_token', d.token);
-    localStorage.setItem('pc_user',  JSON.stringify(d.user));
-    showMsg('registerMsg','success','Account created! Redirecting…');
-    setTimeout(()=>window.location.href='dashboard.html', 900);
-  }catch(e){
-    showMsg('registerMsg','error','Cannot reach server. Is app.py running?');
-  }finally{
-    setLoading('registerBtn',false,'CREATE ACCOUNT');
-  }
-}
-
-// ── If already logged in, skip to dashboard ──
-if(localStorage.getItem('pc_token')) window.location.href='dashboard.html';
 </script>
-</body>
-</html>

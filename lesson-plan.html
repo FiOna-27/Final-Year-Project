@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Lesson Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a; --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0; --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; display:flex; flex-direction:column; }
+  body::before{ content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; opacity:0.4; }
+  header{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:100; }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+  .logo span{ font-size:0.6rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .nav-btn{ padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.08em; text-decoration:none; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  main{ max-width:760px; margin:0 auto; padding:32px 22px; flex:1; width:100%; }
+  .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px 32px; margin-bottom:24px; }
+  .card-title{ font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--accent); margin-bottom:4px; }
+  .card-sub{ font-size:0.58rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:22px; }
+  .field{ margin-bottom:18px; }
+  .field-label{ font-size:0.58rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; display:block; }
+  .level-pills{ display:flex; gap:8px; flex-wrap:wrap; }
+  .level-pill{ padding:9px 20px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.68rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.2s; user-select:none; }
+  .level-pill:hover{ border-color:var(--accent2); color:var(--accent2); }
+  .level-pill.selected.beginner{ border-color:var(--right); color:var(--right); background:rgba(90,224,160,0.07); }
+  .level-pill.selected.intermediate{ border-color:var(--accent); color:var(--accent); background:rgba(200,169,110,0.07); }
+  .level-pill.selected.expert{ border-color:var(--wrong); color:var(--wrong); background:rgba(224,90,90,0.07); }
+  .assessment-badge{ display:none; font-size:0.55rem; letter-spacing:0.12em; color:var(--right); background:rgba(90,224,160,0.07); border:1px solid var(--right); padding:4px 10px; border-radius:12px; margin-left:10px; vertical-align:middle; }
+  .assessment-badge.visible{ display:inline; }
+  .goal-grid{ display:flex; gap:8px; flex-wrap:wrap; }
+  .goal-chip{ padding:7px 14px; border-radius:7px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.62rem; cursor:pointer; transition:all 0.2s; user-select:none; }
+  .goal-chip:hover{ border-color:var(--accent2); color:var(--accent2); }
+  .goal-chip.selected{ border-color:var(--accent2); color:var(--accent2); background:rgba(126,184,200,0.08); }
+  .time-pills{ display:flex; gap:8px; flex-wrap:wrap; }
+  .time-pill{ padding:7px 16px; border-radius:7px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.65rem; cursor:pointer; transition:all 0.2s; user-select:none; }
+  .time-pill:hover{ border-color:var(--accent); color:var(--accent); }
+  .time-pill.selected{ border-color:var(--accent); color:var(--accent); background:rgba(200,169,110,0.07); }
+  .api-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .api-input{ flex:1; min-width:180px; padding:9px 14px; border-radius:7px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; font-size:0.72rem; outline:none; transition:border-color 0.2s; }
+  .api-input:focus{ border-color:var(--accent2); }
+  .api-btn{ padding:9px 14px; border-radius:7px; border:1px solid var(--accent2); background:transparent; color:var(--accent2); font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .api-btn:hover{ background:var(--accent2); color:var(--bg); }
+  .api-hint{ font-size:0.56rem; color:var(--text-dim); margin-top:7px; line-height:1.6; }
+  .api-hint a{ color:var(--accent2); text-decoration:none; }
+  .api-saved{ font-size:0.56rem; color:var(--right); letter-spacing:0.1em; display:none; margin-left:6px; }
+  .gen-wrap{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+  .gen-btn{ padding:12px 30px; border-radius:9px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-family:'Space Mono',monospace; font-size:0.75rem; letter-spacing:0.14em; cursor:pointer; transition:all 0.2s; }
+  .gen-btn:hover:not(:disabled){ background:var(--accent); color:var(--bg); }
+  .gen-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .gen-status{ font-size:0.6rem; color:var(--text-dim); letter-spacing:0.08em; }
+  .parchment{ display:none; background:#faf8f2; border:1px solid #d4cdb8; border-radius:12px; padding:36px 40px; box-shadow:0 4px 24px rgba(0,0,0,0.4); }
+  .parchment.visible{ display:block; }
+  .parchment-header{ font-family:'Playfair Display',serif; font-size:1.2rem; color:#2a2118; margin-bottom:3px; font-style:italic; }
+  .parchment-sub{ font-size:0.54rem; letter-spacing:0.18em; color:#8a7a60; text-transform:uppercase; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid #d4cdb8; }
+  .plan-body{ font-family:'Playfair Display',serif; font-size:0.96rem; color:#2a2118; line-height:1.85; white-space:pre-wrap; word-break:break-word; }
+  .plan-body .day-head{ display:block; font-weight:700; color:#1a1208; margin-top:20px; margin-bottom:4px; font-size:0.85rem; letter-spacing:0.08em; padding:6px 10px; background:#f0ece0; border-radius:5px; border-left:3px solid #c8a96e; }
+  .plan-body .sec-head{ display:block; font-weight:700; color:#1a1208; margin-top:18px; margin-bottom:3px; font-size:0.95rem; }
+  @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor{ display:inline-block; width:2px; height:1em; background:#5a4a2a; margin-left:2px; animation:blink 1s infinite; vertical-align:text-bottom; }
+  @media(max-width:600px){ main{ padding:16px 12px; } .form-card,.parchment{ padding:18px 16px; } }
+</style>
+<script src="groq-config.js"></script>
+</head>
+<body>
+<header>
+  <div class="logo">Piano Coach <span>LESSON PLAN GENERATOR</span></div>
+  <div style="display:flex;gap:8px;">
+    <a class="nav-btn" href="skill-assessment.html">↺ Assessment</a>
+    <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+  </div>
+</header>
+<main>
+  <div class="form-card">
+    <div class="card-title">Your 1-Week Practice Plan</div>
+    <div class="card-sub">Tell us a little about yourself — AI will do the rest</div>
+
+    <div class="field">
+      <label class="field-label">Your skill level <span class="assessment-badge" id="assessmentBadge">from assessment</span></label>
+      <div class="level-pills">
+        <div class="level-pill beginner" onclick="selectLevel('beginner')">Beginner</div>
+        <div class="level-pill intermediate" onclick="selectLevel('intermediate')">Intermediate</div>
+        <div class="level-pill expert" onclick="selectLevel('expert')">Expert</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">What do you want to focus on? (pick any)</label>
+      <div class="goal-grid">
+        <div class="goal-chip" onclick="toggleGoal(this)">Reading sheet music</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Playing in rhythm</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Accidentals &amp; sharps/flats</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Hand coordination</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Playing by ear</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Speed and fluency</div>
+        <div class="goal-chip" onclick="toggleGoal(this)">Music theory basics</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">How much time can you practice each day?</label>
+      <div class="time-pills">
+        <div class="time-pill" onclick="selectTime(this)">10 min</div>
+        <div class="time-pill" onclick="selectTime(this)">20 min</div>
+        <div class="time-pill selected" onclick="selectTime(this)">30 min</div>
+        <div class="time-pill" onclick="selectTime(this)">45 min</div>
+        <div class="time-pill" onclick="selectTime(this)">1 hour</div>
+      </div>
+    </div>
+
+    <div class="gen-wrap">
+      <button class="gen-btn" id="genBtn" onclick="generate()">✦ GENERATE MY PLAN</button>
+      <span class="gen-status" id="genStatus"></span>
+    </div>
+  </div>
+
+  <div class="parchment" id="parchment">
+    <div class="parchment-header" id="parchTitle">Your 1-Week Piano Practice Plan</div>
+    <div class="parchment-sub" id="parchSub"></div>
+    <div class="plan-body" id="planBody"></div>
+  </div>
+</main>
+
+<script>
+let selectedLevel=null, selectedTime='30 min', assessmentData=null;
+
+function init(){
+  try{
+    const raw=sessionStorage.getItem('pc_assessment_result');
+    if(raw){ assessmentData=JSON.parse(raw); selectLevel(assessmentData.recommendedLevel); document.getElementById('assessmentBadge').classList.add('visible'); }
+  }catch(e){}
+}
+
+function selectLevel(level){
+  selectedLevel=level;
+  document.querySelectorAll('.level-pill').forEach(p=>{ p.classList.remove('selected'); if(p.classList.contains(level)) p.classList.add('selected'); });
+}
+function toggleGoal(el){ el.classList.toggle('selected'); }
+function selectTime(el){ document.querySelectorAll('.time-pill').forEach(p=>p.classList.remove('selected')); el.classList.add('selected'); selectedTime=el.textContent.trim(); }
+function getGoals(){ return Array.from(document.querySelectorAll('.goal-chip.selected')).map(el=>el.textContent.trim()); }
+
+function buildPrompt(){
+  const goals=getGoals();
+  const goalsStr=goals.length>0?goals.join(', '):'general improvement';
+  const songs={
+    beginner:['C Major Scale','Twinkle Twinkle','Mary Had a Little Lamb','Happy Birthday','Jingle Bells'],
+    intermediate:['Ode to Joy','Canon in D (excerpt)','Amazing Grace','Fur Elise (opening)'],
+    expert:['Moonlight Sonata']
+  };
+  const available=[...songs.beginner,...(selectedLevel!=='beginner'?songs.intermediate:[]),...(selectedLevel==='expert'?songs.expert:[])].join(', ');
+  let assessCtx='';
+  if(assessmentData) assessCtx=`\nSKILL ASSESSMENT RESULTS:\n- Beginner round: ${assessmentData.scores?.beginner??'N/A'}%\n- Intermediate round: ${assessmentData.scores?.intermediate??'N/A'}%\n- Expert round: ${assessmentData.scores?.expert??'N/A'}%\n`;
+
+  return `You are a piano teacher creating a personalised 1-week practice plan.\n\nSTUDENT PROFILE:\n- Skill level: ${selectedLevel}\n- Daily practice time: ${selectedTime}\n- Focus areas: ${goalsStr}\n${assessCtx}\nAVAILABLE SONGS IN THEIR APP:\n${available}\n\nWrite a 7-day plan in plain text only — no asterisks or markdown.\n\nUse this exact format:\n\nWEEK OVERVIEW\nOne or two sentences on the week theme.\n\nDAY 1 — [short theme]\n3-4 sentences: which song, what BPM, what to focus on, how long.\n\nDAY 2 — [short theme]\n...through DAY 7.\n\nTIPS FOR THE WEEK\n2-3 short specific tips for their level and focus areas.\n\nRules: only use songs from the available list. Be specific about BPM. Scale to ${selectedTime} daily. Keep total response 350-450 words.`;
+}
+
+async function generate(){
+  if(!selectedLevel){ document.getElementById('genStatus').textContent='Please select your skill level first.'; return; }
+  const key = GROQ_KEY;
+  if(!key || key === 'GROQ_API_KEY_HERE'){ document.getElementById('genStatus').textContent='No Groq key set — add it to groq-config.js'; return; }
+
+  const btn=document.getElementById('genBtn'), status=document.getElementById('genStatus');
+  const parch=document.getElementById('parchment'), body=document.getElementById('planBody');
+  btn.disabled=true; status.textContent='Generating…';
+  parch.classList.remove('visible'); body.innerHTML='';
+
+  const lvlLabel={beginner:'Beginner',intermediate:'Intermediate',expert:'Expert'};
+  document.getElementById('parchTitle').textContent=`1-Week ${lvlLabel[selectedLevel]} Practice Plan`;
+  document.getElementById('parchSub').textContent=`${selectedLevel} · ${selectedTime}/day · ${getGoals().join(', ')||'general improvement'} · llama-3.3-70b`;
+
+  try{
+    const resp=await fetch(GROQ_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:GROQ_MODEL,messages:[{role:'user',content:buildPrompt()}],temperature:0.7,max_tokens:800,stream:true})
+    });
+    if(resp.status===401||resp.status===403) throw new Error('Invalid API key.');
+    if(resp.status===429){ for(let s=15;s>0;s--){ status.textContent=`Rate limited — retrying in ${s}s…`; await new Promise(r=>setTimeout(r,1000)); } btn.disabled=false; generate(); return; }
+    if(!resp.ok) throw new Error(`API error ${resp.status}`);
+
+    parch.classList.add('visible');
+    parch.scrollIntoView({behavior:'smooth',block:'start'});
+    status.textContent='Receiving…';
+
+    const cursor=document.createElement('span'); cursor.className='cursor'; body.appendChild(cursor);
+    const reader=resp.body.getReader(), decoder=new TextDecoder();
+    let buffer='', fullText='';
+
+    while(true){
+      const{done,value}=await reader.read(); if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const lines=buffer.split('\n'); buffer=lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue;
+        const data=line.slice(6).trim(); if(data==='[DONE]')continue;
+        try{ const chunk=JSON.parse(data)?.choices?.[0]?.delta?.content||''; if(chunk){ fullText+=chunk; body.innerHTML=fmt(fullText); body.appendChild(cursor); } }catch(e){}
+      }
+    }
+    body.innerHTML=fmt(fullText); status.textContent='';
+  }catch(err){
+    parch.classList.add('visible');
+    body.innerHTML=`<span style="color:#c44;">Error: ${err.message}</span>`;
+    status.textContent=''; console.error(err);
+  }
+  btn.disabled=false;
+}
+
+function fmt(text){
+  const e=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return e
+    .replace(/^(DAY\s+\d+\s*[—–-].*)$/gm,'<span class="day-head">$1</span>')
+    .replace(/^([A-Z][A-Z\s]{4,})$/gm,'<span class="sec-head">$1</span>');
+}
+
+init();
+</script>
+</body>
+</html>

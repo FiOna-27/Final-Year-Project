@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — AI Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; display:flex; flex-direction:column; }
+  body::before{ content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; opacity:0.4; }
+
+  header{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:100; }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+  .logo span{ font-size:0.6rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .nav-btn{ padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.08em; text-decoration:none; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  main{ max-width:860px; margin:0 auto; padding:28px 22px; flex:1; width:100%; }
+
+  /* ── API key setup card ── */
+  .api-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:24px 28px; margin-bottom:24px;
+  }
+  .api-card-title{ font-size:0.6rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; margin-bottom:14px; }
+  .api-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .api-input{
+    flex:1; min-width:200px; padding:9px 14px; border-radius:7px;
+    border:1px solid var(--border); background:var(--bg);
+    color:var(--text); font-family:'Space Mono',monospace; font-size:0.72rem;
+    outline:none; transition:border-color 0.2s;
+  }
+  .api-input:focus{ border-color:var(--accent2); }
+  .api-btn{
+    padding:9px 18px; border-radius:7px; border:1px solid var(--accent2);
+    background:transparent; color:var(--accent2); font-family:'Space Mono',monospace;
+    font-size:0.68rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  }
+  .api-btn:hover{ background:var(--accent2); color:var(--bg); }
+  .api-hint{ font-size:0.58rem; color:var(--text-dim); margin-top:10px; line-height:1.6; }
+  .api-hint a{ color:var(--accent2); text-decoration:none; }
+  .api-hint a:hover{ text-decoration:underline; }
+  .api-saved{ font-size:0.6rem; color:var(--right); letter-spacing:0.1em; display:none; }
+
+  /* ── Session summary card ── */
+  .summary-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:22px 28px; margin-bottom:24px;
+  }
+  .summary-title{ font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--accent); margin-bottom:4px; }
+  .summary-sub{ font-size:0.58rem; letter-spacing:0.14em; color:var(--text-dim); margin-bottom:18px; text-transform:uppercase; }
+  .stats-grid{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .stat-pill{
+    padding:8px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface2); font-size:0.65rem; display:flex; flex-direction:column; gap:2px;
+  }
+  .stat-pill .sp-val{ font-size:1.1rem; font-weight:700; color:var(--accent); }
+  .stat-pill .sp-val.good{ color:var(--right); }
+  .stat-pill .sp-val.warn{ color:var(--warn); }
+  .stat-pill .sp-val.bad{ color:var(--wrong); }
+  .stat-pill .sp-lbl{ color:var(--text-dim); font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; }
+
+  /* ── Note timeline ── */
+  .timeline-label{ font-size:0.58rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .timeline{ display:flex; gap:4px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
+  .tn{
+    min-width:36px; height:52px; border-radius:6px; border:1px solid var(--border);
+    background:var(--surface2); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; font-size:0.65rem; font-weight:700; flex-shrink:0; gap:2px;
+  }
+  .tn .tn-oct{ font-size:0.42rem; color:var(--text-dim); }
+  .tn.correct{ border-color:var(--right); color:var(--right); background:rgba(90,224,160,0.06); }
+  .tn.wrong  { border-color:var(--wrong); color:var(--wrong); background:rgba(224,90,90,0.06); }
+  .tn.missed { border-color:var(--warn);  color:var(--warn);  background:rgba(224,168,90,0.06); }
+  .tn.early  { border-color:var(--warn);  color:var(--warn);  background:rgba(224,168,90,0.06); }
+  .tn.late   { border-color:var(--wrong); color:var(--wrong); background:rgba(224,90,90,0.06); }
+  .tn.skipped{ opacity:0.35; }
+  .tn .tn-tag{ font-size:0.38rem; line-height:1; }
+
+  /* ── Generate button ── */
+  .gen-wrap{ margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .gen-btn{
+    padding:12px 28px; border-radius:8px; border:1px solid var(--accent);
+    background:transparent; color:var(--accent); font-family:'Space Mono',monospace;
+    font-size:0.72rem; letter-spacing:0.12em; cursor:pointer; transition:all 0.2s;
+  }
+  .gen-btn:hover:not(:disabled){ background:var(--accent); color:var(--bg); }
+  .gen-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .gen-status{ font-size:0.6rem; color:var(--text-dim); letter-spacing:0.08em; }
+
+  /* ── Feedback parchment ── */
+  .parchment{
+    background:#faf8f2; border:1px solid #d4cdb8; border-radius:12px;
+    padding:32px 36px; box-shadow:0 4px 24px rgba(0,0,0,0.4);
+    display:none;
+  }
+  .parchment.visible{ display:block; }
+  .parchment-header{
+    font-family:'Playfair Display',serif; font-size:1.1rem; color:#2a2118;
+    margin-bottom:4px; font-style:italic;
+  }
+  .parchment-sub{
+    font-size:0.55rem; letter-spacing:0.18em; color:#8a7a60;
+    text-transform:uppercase; margin-bottom:24px; padding-bottom:14px;
+    border-bottom:1px solid #d4cdb8;
+  }
+  .feedback-body{
+    font-family:'Playfair Display',serif; font-size:0.97rem; color:#2a2118;
+    line-height:1.82; white-space:pre-wrap; word-break:break-word;
+  }
+  .feedback-body .section-head{
+    font-weight:700; color:#1a1208; display:block; margin-top:18px; margin-bottom:4px;
+    font-size:1rem; letter-spacing:0.02em;
+  }
+
+  /* streaming cursor blink */
+  @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor{ display:inline-block; width:2px; height:1em; background:#5a4a2a; margin-left:2px; animation:blink 1s infinite; vertical-align:text-bottom; }
+
+  /* ── No session state ── */
+  .no-session{
+    text-align:center; padding:60px 20px;
+    font-family:'Playfair Display',serif; font-style:italic; color:var(--text-dim); font-size:1rem;
+  }
+  .no-session a{ color:var(--accent2); text-decoration:none; }
+
+  @media(max-width:600px){
+    main{ padding:16px 12px; }
+    .parchment{ padding:20px 18px; }
+    .summary-card,.api-card{ padding:16px 18px; }
+  }
+</style>
+<script src="groq-config.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>AI FEEDBACK</span></div>
+  <div style="display:flex;gap:8px;">
+    <a class="nav-btn" href="piano-coach-v3.5.html">← BACK TO PRACTICE</a>
+  </div>
+</header>
+
+<main id="mainWrap">
+  <div class="no-session" id="noSession" style="display:none;">
+    No session data found.<br><br>
+    <a href="piano-coach-v3.5.html">Play a song first</a>, then click <em>Get AI Feedback</em> when it finishes.
+  </div>
+
+  <div id="pageContent" style="display:none;">
+
+    <!-- Session summary -->
+    <div class="summary-card">
+      <div class="summary-title" id="sumSong">—</div>
+      <div class="summary-sub" id="sumMeta">—</div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="timeline-label">Note-by-note</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- Generate -->
+    <div class="gen-wrap">
+      <button class="gen-btn" id="genBtn" onclick="generate()">✦ ANALYSE MY PLAYING</button>
+      <span class="gen-status" id="genStatus"></span>
+    </div>
+
+    <!-- Feedback parchment -->
+    <div class="parchment" id="parchment">
+      <div class="parchment-header" id="parchTitle">AI Feedback</div>
+      <div class="parchment-sub" id="parchSub"></div>
+      <div class="feedback-body" id="feedbackBody"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const SESSION_KEY = 'pc_llm_session';
+
+let session = null;
+
+// ── Load session ──────────────────────────────────────────────────────────────
+function init(){
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if(!raw){
+    document.getElementById('noSession').style.display = 'block';
+    return;
+  }
+  try{ session = JSON.parse(raw); }
+  catch(e){ document.getElementById('noSession').style.display='block'; return; }
+
+  document.getElementById('pageContent').style.display = 'block';
+  renderSummary();
+}
+
+function flash(msg){ const s=document.getElementById('genStatus'); s.textContent=msg; setTimeout(()=>{ if(s.textContent===msg) s.textContent=''; },2000); }
+
+// ── Render summary ────────────────────────────────────────────────────────────
+function renderSummary(){
+  const s = session;
+  document.getElementById('sumSong').textContent = s.song;
+  document.getElementById('sumMeta').textContent =
+    `${s.level.toUpperCase()} · ${s.bpm} BPM · ${s.durationSecs}s played`;
+
+  const acc = s.accuracy;
+  const accClass = acc>=80?'good':acc>=50?'warn':'bad';
+
+  const timingTxt = s.timingAvgMs!=null ? s.timingAvgMs+'ms' : '—';
+  const timingClass = s.timingAvgMs!=null?(s.timingAvgMs<120?'good':s.timingAvgMs<250?'warn':'bad'):'';
+
+  const earlyCount = (s.noteResults||[]).filter(r=>r==='early').length;
+  const lateCount  = (s.noteResults||[]).filter(r=>r==='late').length;
+
+  const pills = [
+    { val: acc+'%',          cls: accClass, lbl: 'Accuracy'    },
+    { val: s.correctCount,   cls: 'good',   lbl: 'Correct'     },
+    { val: s.wrongCount,     cls: s.wrongCount>0?'bad':'good', lbl:'Wrong' },
+    { val: s.missedCount,    cls: s.missedCount>0?'warn':'good',lbl:'App missed'},
+    { val: s.streak,         cls: s.streak>=5?'good':'',        lbl: 'Best streak'},
+    { val: timingTxt,        cls: timingClass, lbl: 'Avg timing'},
+    ...(s.rhythmWasOn ? [
+      { val: earlyCount,     cls: earlyCount>0?'warn':'good',   lbl: 'Early' },
+      { val: lateCount,      cls: lateCount>0?'warn':'good',    lbl: 'Late'  },
+    ] : []),
+  ];
+  const grid = document.getElementById('statsGrid');
+  pills.forEach(p=>{
+    const d = document.createElement('div');
+    d.className = 'stat-pill';
+    d.innerHTML = `<span class="sp-val ${p.cls}">${p.val}</span><span class="sp-lbl">${p.lbl}</span>`;
+    grid.appendChild(d);
+  });
+
+  // Note timeline
+  const tl = document.getElementById('timeline');
+  (s.notes||[]).forEach((note,i)=>{
+    const result = (s.noteResults||[])[i]||'skipped';
+    const div = document.createElement('div');
+    div.className = 'tn ' + result;
+    const name = note.replace(/\d/,'');
+    const oct  = note.match(/\d/)?.[0]||'';
+    const tag  = result==='correct'?'✓':result==='wrong'?'✗':result==='missed'?'?':result==='early'?'▲':result==='late'?'▼':'·';
+    div.innerHTML = `<span>${name}</span><span class="tn-oct">${oct}</span><span class="tn-tag">${tag}</span>`;
+    tl.appendChild(div);
+  });
+}
+
+// ── Build prompt ──────────────────────────────────────────────────────────────
+function buildPrompt(){
+  const s = session;
+  const noteLines = (s.notes||[]).map((n,i)=>{
+    const r = (s.noteResults||[])[i]||'skipped';
+    return `  Note ${i+1}: ${n} → ${r}`;
+  }).join('\n');
+
+  const wrongNotes = (s.notes||[]).filter((_,i)=>['wrong','late','early'].includes((s.noteResults||[])[i]));
+  const missedNotes= (s.notes||[]).filter((_,i)=>(s.noteResults||[])[i]==='missed');
+
+  // Rhythm stats — only included when rhythm mode was active
+  let rhythmBlock = '';
+  if(s.rhythmWasOn && s.timingScores && s.timingScores.length > 0){
+    const scores = s.timingScores;
+    const earlyCount = (s.noteResults||[]).filter(r=>r==='early').length;
+    const lateCount  = (s.noteResults||[]).filter(r=>r==='late').length;
+    const onBeat     = (s.noteResults||[]).filter(r=>r==='correct').length;
+    const beatMs     = Math.round(60000 / s.bpm);
+    const maxOff     = Math.max(...scores);
+    const minOff     = Math.min(...scores);
+    // Determine tendency: positive average = rushing ahead of beat, negative = dragging
+    const rawOffsets = s.timingScores; // these are absolute values stored; directionality from early/late counts
+    const rushOrDrag = earlyCount > lateCount ? 'rushing (playing before the beat)'
+                     : lateCount > earlyCount ? 'dragging (playing after the beat)'
+                     : 'fairly balanced between early and late';
+
+    rhythmBlock = `
+
+RHYTHM DATA (rhythm mode was ON at ${s.bpm} BPM — one beat = ${beatMs}ms):
+- Notes played on beat: ${onBeat}
+- Notes played early: ${earlyCount}
+- Notes played late: ${lateCount}
+- Average timing offset from beat: ${s.timingAvgMs}ms
+- Best timing: ${minOff}ms off the beat
+- Worst timing: ${maxOff}ms off the beat
+- Overall tendency: ${rushOrDrag}`;
+  }
+
+  const rhythmSection = s.rhythmWasOn ? `
+
+RHYTHM FEEDBACK
+Analyse their rhythm specifically. Were they rushing, dragging, or consistent? At ${s.bpm} BPM each beat is ${Math.round(60000/s.bpm)}ms — put their average offset in context of that. Give one concrete rhythm practice tip (e.g. slow the BPM, use a metronome click, count out loud). Keep this section to 3–4 sentences.` : '';
+
+  return `You are a warm, encouraging piano coach giving feedback to a student who just finished a play-along session.
+
+SESSION DETAILS:
+- Song: ${s.song}
+- Student level: ${s.level}
+- Tempo: ${s.bpm} BPM
+- Rhythm mode: ${s.rhythmWasOn ? 'ON — student was playing to the beat' : 'OFF — free timing'}
+- Session length: ${s.durationSecs} seconds
+
+PERFORMANCE RESULTS:
+- Note accuracy: ${s.accuracy}%
+- Correct notes: ${s.correctCount}
+- Wrong notes: ${s.wrongCount}
+- App-missed notes (detection issue, not student error): ${s.missedCount}
+- Best streak: ${s.streak} consecutive correct notes
+- Average timing offset: ${s.timingAvgMs!=null?s.timingAvgMs+'ms (how far off the beat on average)':'not measured (rhythm mode was off)'}${rhythmBlock}
+
+NOTE-BY-NOTE BREAKDOWN:
+${noteLines}
+
+Notes the student got wrong or had timing issues with: ${wrongNotes.length>0?wrongNotes.join(', '):'none'}
+Notes the app failed to detect (not student's fault): ${missedNotes.length>0?missedNotes.join(', '):'none'}
+
+Please give feedback in these sections, using plain text (no markdown symbols like * or #):
+
+WHAT WENT WELL
+Highlight genuine strengths. Be specific — mention which notes or patterns they nailed.
+
+AREAS TO FOCUS ON
+Point out patterns in the mistakes. Are the errors clustered at certain positions? Specific note names? Timing issues? Don't just list errors — explain what the pattern might mean (e.g. struggling with sharps, rushing certain beats).
+${rhythmSection}
+PRACTICE TIPS
+Give 2–3 concrete, actionable tips tailored to this specific song and their level (${s.level}). Suggest specific exercises or approaches.
+
+ENCOURAGEMENT
+End with a short, genuine motivational note. Vary the tone — don't be generic.
+
+Keep the entire response under 400 words. Write as if you are talking to the student directly.`;
+}
+
+// Generate
+async function generate(){
+  const key = GROQ_KEY;
+  if(!key || key === 'GROQ_API_KEY_HERE'){
+    flash('No Groq key set — add it to groq-config.js');
+    return;
+  }
+
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('genStatus');
+  const parchment = document.getElementById('parchment');
+  const body = document.getElementById('feedbackBody');
+
+  btn.disabled = true;
+  status.textContent = 'Connecting to Groq…';
+  parchment.classList.remove('visible');
+  body.innerHTML = '';
+
+  // set parchment header
+  document.getElementById('parchTitle').textContent = `Feedback — ${session.song}`;
+  document.getElementById('parchSub').textContent =
+    `${session.level} · ${session.accuracy}% accuracy · ${session.bpm} BPM${session.rhythmWasOn?' · rhythm ON':''} · llama-3.3-70b`;
+
+  // Fetch with automatic retry on 429 (rate limit)
+  async function fetchWithRetry(url, opts, maxRetries=3){
+    for(let attempt=0; attempt<maxRetries; attempt++){
+      const resp = await fetch(url, opts);
+      if(resp.status === 429){
+        // Parse retry-after header if present, otherwise use exponential backoff
+        const retryAfter = parseInt(resp.headers.get('Retry-After')||'0');
+        const waitSecs   = retryAfter > 0 ? retryAfter : (attempt===0 ? 15 : attempt===1 ? 30 : 60);
+        const attemptsLeft = maxRetries - attempt - 1;
+        if(attemptsLeft === 0) throw new Error('Rate limit hit. Please wait a minute and try again.');
+        // Count down in the status bar
+        for(let s=waitSecs; s>0; s--){
+          status.textContent = `Rate limited — retrying in ${s}s (attempt ${attempt+2}/${maxRetries})…`;
+          await new Promise(r=>setTimeout(r,1000));
+        }
+        status.textContent = 'Retrying…';
+        continue;
+      }
+      return resp;
+    }
+  }
+
+  try{
+    const resp = await fetchWithRetry(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      },
+      body: JSON.stringify({
+        model:       GROQ_MODEL,
+        messages:    [{ role:'user', content: buildPrompt() }],
+        temperature: 0.75,
+        max_tokens:  700,
+        stream:      true
+      })
+    });
+
+    if(resp.status===400){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err?.error?.message||'Bad request — check your API key.');
+    }
+    if(resp.status===403||resp.status===401){
+      throw new Error('Invalid API key. Please check and re-save it.');
+    }
+    if(!resp.ok){ throw new Error(`API error ${resp.status} — try again in a moment.`); }
+
+    parchment.classList.add('visible');
+    status.textContent = 'Receiving…';
+
+    // Add blinking cursor
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    body.appendChild(cursor);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+
+      buffer += decoder.decode(value, { stream:true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line
+
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if(data === '[DONE]') continue;
+        try{
+          const json = JSON.parse(data);
+          const chunk = json?.choices?.[0]?.delta?.content || '';
+          if(chunk){
+            fullText += chunk;
+            // Render text with cursor at end
+            body.innerHTML = formatFeedback(fullText);
+            body.appendChild(cursor);
+            // Auto-scroll parchment into view
+            parchment.scrollIntoView({ behavior:'smooth', block:'nearest' });
+          }
+        }catch(e){ /* skip malformed SSE line */ }
+      }
+    }
+
+    // Final render without cursor
+    body.innerHTML = formatFeedback(fullText);
+    status.textContent = 'Done';
+    setTimeout(()=>{ status.textContent=''; }, 2000);
+
+  }catch(err){
+    parchment.classList.add('visible');
+    body.innerHTML = `<span style="color:#c44;">Error: ${err.message}</span>`;
+    status.textContent = 'Failed';
+    console.error('Gemini error:', err);
+  }
+
+  btn.disabled = false;
+}
+
+// ── Format feedback text ──────────────────────────────────────────────────────
+// Turns section headers (ALL CAPS lines) into styled spans, escapes HTML otherwise
+function formatFeedback(text){
+  const escaped = text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+
+  // Lines that are all-caps + spaces (section headings from the prompt)
+  return escaped.replace(/^([A-Z][A-Z\s]{3,})$/gm, '<span class="section-head">$1</span>');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

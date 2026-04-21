@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Sheet Music</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+    --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+    --text:#e8e8f0; --text-dim:#6a6a8a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; }
+  body::before{
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:1000; opacity:0.4;
+  }
+
+  /* ── Header ── */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:15px 28px; border-bottom:1px solid var(--border);
+    background:var(--surface); position:sticky; top:0; z-index:100;
+    flex-wrap:wrap; gap:10px;
+  }
+  .logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+  .logo span{ font-size:0.6rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+  .nav-btn{
+    padding:6px 13px; border-radius:6px; border:1px solid var(--border);
+    background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace;
+    font-size:0.63rem; letter-spacing:0.08em; text-decoration:none; transition:all 0.2s;
+  }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  /* ── Main layout ── */
+  main{ max-width:960px; margin:0 auto; padding:28px 22px; }
+
+  /* ── Song selector panel ── */
+  .selector-panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px 24px; margin-bottom:24px;
+    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  }
+  .selector-label{ font-size:0.58rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; white-space:nowrap; }
+  .song-pills{ display:flex; gap:7px; flex-wrap:wrap; flex:1; }
+  .song-pill{
+    padding:7px 14px; border-radius:20px; cursor:pointer; font-size:0.65rem;
+    border:1px solid var(--border); background:var(--surface2); color:var(--text-dim);
+    transition:all 0.18s; white-space:nowrap; letter-spacing:0.05em;
+  }
+  .song-pill:hover{ border-color:var(--accent2); color:var(--accent2); }
+  .song-pill.active{ background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:700; }
+
+  /* ── Song info bar ── */
+  .info-bar{
+    display:flex; align-items:center; gap:20px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:12px 20px; margin-bottom:18px; flex-wrap:wrap; gap:16px;
+  }
+  .info-title{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); }
+  .info-chip{
+    font-size:0.58rem; letter-spacing:0.14em; padding:4px 10px;
+    border-radius:12px; border:1px solid var(--border); color:var(--text-dim);
+    background:var(--surface2);
+  }
+  .info-chip.highlight{ border-color:var(--accent2); color:var(--accent2); }
+
+  /* ── Sheet music parchment area ── */
+  .sheet-wrap{
+    background:#faf8f2;
+    border:1px solid #d4cdb8;
+    border-radius:12px;
+    padding:28px 20px 20px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.4);
+    overflow-x:auto;
+    min-height:200px;
+  }
+  .sheet-title{
+    font-family:'Playfair Display',serif; font-size:1.1rem; color:#2a2118;
+    text-align:center; margin-bottom:4px; font-style:italic;
+  }
+  .sheet-subtitle{
+    font-size:0.55rem; letter-spacing:0.18em; color:#8a7a60; text-align:center;
+    text-transform:uppercase; margin-bottom:20px;
+  }
+  #scoreContainer svg{
+    display:block;
+    /* VexFlow renders black text/lines — looks perfect on the parchment */
+  }
+
+  /* Legend */
+  .legend{
+    display:flex; gap:18px; flex-wrap:wrap; margin-top:16px;
+    padding:12px 16px; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; align-items:center;
+  }
+  .legend-title{ font-size:0.56rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-right:6px; }
+  .legend-item{ display:flex; align-items:center; gap:7px; font-size:0.62rem; color:var(--text-dim); }
+  .legend-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+  /* Error / loading */
+  .sheet-msg{
+    text-align:center; padding:40px; color:#8a7a60;
+    font-family:'Playfair Display',serif; font-style:italic; font-size:1rem;
+  }
+
+
+  /* ── Your Uploads section ── */
+  .section-divider{
+    display:flex; align-items:center; gap:14px; margin:32px 0 20px;
+  }
+  .section-divider-line{ flex:1; height:1px; background:var(--border); }
+  .section-divider-label{
+    font-size:0.58rem; letter-spacing:0.22em; color:var(--text-dim);
+    text-transform:uppercase; white-space:nowrap;
+  }
+  .uploads-empty{
+    text-align:center; padding:32px; color:var(--text-dim);
+    font-size:0.7rem; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px;
+  }
+  .uploads-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+    gap:12px; margin-bottom:8px;
+  }
+  .upload-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px 18px; cursor:pointer; transition:all 0.18s;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .upload-card:hover{ border-color:var(--accent2); transform:translateY(-2px); }
+  .upload-card.active{ border-color:var(--accent); background:rgba(200,169,110,0.06); }
+  .upload-card-icon{ font-size:1.4rem; }
+  .upload-card-title{
+    font-size:0.75rem; font-weight:700; color:var(--accent2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .upload-card.active .upload-card-title{ color:var(--accent); }
+  .upload-card-meta{ font-size:0.56rem; color:var(--text-dim); }
+  .upload-loading{
+    text-align:center; padding:24px; color:var(--text-dim); font-size:0.65rem;
+  }
+
+  @media(max-width:640px){
+    header{ padding:12px 14px; }
+    main{ padding:16px 12px; }
+    .selector-panel{ padding:14px 16px; }
+    .info-bar{ padding:10px 14px; }
+    .uploads-grid{ grid-template-columns:1fr 1fr; }
+  }
+</style>
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <script src="api-config.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>SHEET MUSIC READER</span></div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a class="nav-btn" href="piano-coach-v3.5.html">🎹 Practice</a>
+    <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- Song selector -->
+  <div class="selector-panel">
+    <span class="selector-label">Select Song</span>
+    <div class="song-pills" id="songPills"></div>
+  </div>
+
+  <!-- Info bar -->
+  <div class="info-bar" id="infoBar">
+    <span class="info-title" id="infoTitle">—</span>
+    <span class="info-chip highlight" id="infoBpm">— BPM</span>
+    <span class="info-chip" id="infoNotes">— notes</span>
+    <span class="info-chip" id="infoMeasures">— measures</span>
+    <span class="info-chip" id="infoTime">4/4 time</span>
+  </div>
+
+  <!-- Parchment / notation -->
+  <div class="sheet-wrap">
+    <div class="sheet-title" id="sheetTitle"></div>
+    <div class="sheet-subtitle" id="sheetSubtitle"></div>
+    <div id="scoreContainer"><div class="sheet-msg">Select a song above to view its sheet music.</div></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span class="legend-title">Note guide</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#2a2118"></div>Quarter note — 1 beat</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8a7a60"></div>Ledger lines — notes above/below staff</div>
+    <div class="legend-item" style="font-size:0.6rem;margin-left:auto;color:var(--text-dim);">All songs shown in treble clef · 4/4 time</div>
+  </div>
+
+  <!-- Your Uploads -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Your Uploads</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div id="uploadsSection">
+    <div class="upload-loading" id="uploadsLoading">Loading your MIDI library…</div>
+  </div>
+
+</main>
+
+<script>
+// ─── SONG DATA ───────────────────────────────────────────────────────────────
+const SONGS = {
+  cmajor:   { name:'C Major Scale',          bpm:80,  notes:['C4','D4','E4','F4','G4','A4','B4','C5'] },
+  twinkle:  { name:'Twinkle Twinkle',        bpm:100, notes:['C4','C4','G4','G4','A4','A4','G4','F4','F4','E4','E4','D4','D4','C4',
+                                                                                           'G4','G4','F4','F4','E4','E4','D4','G4','G4','F4','F4','E4','E4','D4',
+                                                                                           'C4','C4','G4','G4','A4','A4','G4','F4','F4','E4','E4','D4','D4','C4'] },
+  ode:      { name:'Ode to Joy',             bpm:100, notes:['E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','E4','D4','D4',
+                                                                                       'E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','D4','D4','C4',
+                                                                                       'E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','E4','D4','D4',
+                                                                                      'E4','E4','F4','G4','G4','F4','E4','D4','C4','C4','D4','E4','D4','D4','C4']},
+  canon:    { name:'Canon in D (excerpt)',   bpm:90,  notes:['D4','A3','B3','F#3','G3','D3','G3','A3','D4','A3','B3','F#3','G3','D3','G3','A3',
+                                                                                            'F#4','D4','E4','C#4','D4','A3','D4','E4','F#4','D4','E4','C#4','D4','A3','D4','E4'] },
+  happy:    { name:'Happy Birthday',         bpm:90,  notes:['C4','C4','D4','C4','F4','E4','C4','C4','D4','C4','G4','F4',
+                                                                                            'C4','C4','C5','A4','F4','E4','D4','B4','B4','A4','F4','G4','F4'] },
+  jingle:   { name:'Jingle Bells',           bpm:120, notes:['E4','E4','E4','E4','E4','E4','E4','G4','C4','D4','E4',
+                                                                                    'F4','F4','F4','F4','E4','E4','E4','D4','D4','E4','D4','G4',
+                                                                                    'E4','E4','E4','E4','E4','E4','E4','G4','C4','D4','E4',
+                                                                                    'F4','F4','F4','F4','E4','E4','E4','G4','G4','F4','D4','C4']},
+  mary:     { name:'Mary Had a Little Lamb', bpm:100, notes:['E4','D4','C4','D4','E4','E4','E4','D4','D4','D4','E4','G4','G4',
+                                                                                               'E4','D4','C4','D4','E4','E4','E4','D4','D4','E4','D4','C4'] },
+  furelise: { name:'Für Elise (opening)',    bpm:80,  notes:['E5','D#5','E5','D#5','E5','B4','D5','C5','A4','C5','E4','A4','B4','E4','G#4','B4',
+                                                                                          'C5','E4','E5','D#5','E5','D#5','E5','B4','D5','C5','A4','C5','E4','A4','B4','E4',
+                                                                                          'C5','B4','A4','B4','C5','D5','E5','G4','F4','E4','D4','F4','E4','D4','C4'] },
+  amazing:  { name:'Amazing Grace',          bpm:80,  notes:['G3','C4','E4','C4','E4','D4','C4','E4','G4','G4','C5','B4','C5','A4','G4','E4',
+                                                                                              'G4','C4','E4','C4','E4','D4','C4','E4','G4','G4','C5','B4','C5','A4','G4','E4',
+                                                                                              'G4','C4','E4','C4','E4','D4','C4'] },
+  moonlight:{ name:'Moonlight Sonata',       bpm:60,  notes:['G#3','C#4','E4','G#3','C#4','E4','G#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4',
+                                                                                              'G#3','C#4','E4','G#3','C#4','E4','G#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4',
+                                                                                              'G#3','C#4','E4','G#3','C#4','E4','G#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4','F#3','C#4','E4'], },
+};
+
+const SONG_KEYS = Object.keys(SONGS);
+let currentKey  = 'cmajor';
+
+// NOTE CONVERSION 
+// "C#4" to { key:"c#/4", acc:"#" }   "D#5" to { key:"d#/5", acc:"#" }
+function toVex(n) {
+  const m = n.match(/^([A-G])(#|b?)(\d)$/);
+  if (!m) return null;
+  return {
+    key: m[1].toLowerCase() + m[2] + '/' + m[3],
+    acc: m[2] || null,
+  };
+}
+
+// CHUNK into measures of 4 quarter notes
+function toMeasures(notes) {
+  const out = [];
+  for (let i = 0; i < notes.length; i += 4) out.push(notes.slice(i, i + 4));
+  return out;
+}
+
+// RENDER 
+function renderSong(key) {
+  const song     = SONGS[key];
+  const measures = toMeasures(song.notes);
+
+  // ── Update info bar & parchment header FIRST (before any VexFlow code) ──
+  document.getElementById('infoTitle').textContent     = song.name;
+  document.getElementById('infoBpm').textContent       = song.bpm + ' BPM';
+  document.getElementById('infoNotes').textContent     = song.notes.length + ' notes';
+  document.getElementById('infoMeasures').textContent  = measures.length + ' measures';
+  document.getElementById('sheetTitle').textContent    = song.name;
+  document.getElementById('sheetSubtitle').textContent = song.bpm + ' BPM · ' + song.notes.length + ' notes · 4/4 time';
+
+  const container = document.getElementById('scoreContainer');
+  container.innerHTML = '';
+
+  try {
+    // ── VexFlow 4.x namespace ──
+    const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Barline } = Vex.Flow;
+
+    // ── Layout ──
+    const WRAP_W   = container.parentElement.clientWidth - 48;
+    const W        = Math.min(WRAP_W, 860);
+    const STAVE_H  = 130;
+    const FIRST_W  = 220;   // first stave per row is wider (clef + time sig)
+    const REST_W   = 165;
+    const GAP      = 8;
+
+    // How many measures fit per row?
+    let mpr = 1;
+    let used = FIRST_W + GAP;
+    while (used + REST_W + GAP <= W) { used += REST_W + GAP; mpr++; }
+
+    const rows  = Math.ceil(measures.length / mpr);
+    const totalH = 20 + rows * STAVE_H;
+
+    // ── Create SVG renderer ──
+    const renderer = new Renderer(container, Renderer.Backends.SVG);
+    renderer.resize(W, totalH);
+    const ctx = renderer.getContext();
+    ctx.setFillStyle('#1a1208');
+    ctx.setStrokeStyle('#1a1208');
+
+    // ── Draw row by row ──
+    let mi = 0;
+    for (let row = 0; row < rows; row++) {
+      let x = 0;
+      const y = 20 + row * STAVE_H;
+
+      for (let col = 0; col < mpr && mi < measures.length; col++) {
+        const isFirstRow = row === 0;
+        const isFirstCol = col === 0;
+        const sw = isFirstCol ? FIRST_W : REST_W;
+        const chunk = measures[mi];
+
+        // ── Stave ──
+        const stave = new Stave(x, y, sw);
+        if (isFirstRow && isFirstCol) stave.addClef('treble').addTimeSignature('4/4');
+        else if (isFirstCol)          stave.addClef('treble');
+        if (mi === measures.length - 1) stave.setEndBarType(Barline.type.END);
+        stave.setContext(ctx).draw();
+
+        // ── Build StaveNotes ──
+        const vfNotes = [];
+        const accSeen = {};
+
+        for (let b = 0; b < 4; b++) {
+          if (b < chunk.length) {
+            const v = toVex(chunk[b]);
+            if (!v) continue;
+
+            // In VexFlow 4 — no auto_stem, no clef needed in constructor
+            const sn = new StaveNote({
+              keys:     [v.key],
+              duration: 'q',
+            });
+
+            // Accidental — only first occurrence per pitch class per measure
+            const pc = v.key.replace(/\/\d/, ''); // e.g. "c#"
+            if (v.acc && !accSeen[pc]) {
+              sn.addModifier(new Accidental(v.acc));
+              accSeen[pc] = true;
+            }
+
+            vfNotes.push(sn);
+          } else {
+            // Quarter rest to pad measure
+            vfNotes.push(new StaveNote({ keys: ['b/4'], duration: 'qr' }));
+          }
+        }
+
+        // ── Voice + Format + Draw ──
+        const voice = new Voice({ num_beats: 4, beat_value: 4 }).setStrict(false);
+        voice.addTickables(vfNotes);
+
+        const padding = isFirstCol ? (isFirstRow ? 90 : 60) : 24;
+        new Formatter().joinVoices([voice]).format([voice], sw - padding);
+        voice.draw(ctx, stave);
+
+        x += sw + GAP;
+        mi++;
+      }
+    }
+  } catch (err) {
+    // Show a human-readable error inside the parchment instead of silent failure
+    container.innerHTML = `<div class="sheet-msg" style="color:#c44;">
+      Rendering error: ${err.message}<br>
+      <span style="font-size:0.7rem;font-style:normal;">Open browser console (F12) for details.</span>
+    </div>`;
+    console.error('VexFlow render error:', err);
+  }
+}
+
+// ─── SONG PILLS ──────────────────────────────────────────────────────────────
+function buildPills() {
+  const wrap = document.getElementById('songPills');
+  SONG_KEYS.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'song-pill' + (k === currentKey ? ' active' : '');
+    btn.textContent = SONGS[k].name;
+    btn.onclick = () => {
+      currentKey = k;
+      document.querySelectorAll('.song-pill').forEach((p, i) =>
+        p.classList.toggle('active', SONG_KEYS[i] === k));
+      renderSong(k);
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+buildPills();
+
+// Wait for VexFlow to fully initialise before first render
+function tryRender() {
+  if (typeof Vex !== 'undefined' && Vex.Flow && Vex.Flow.Renderer) {
+    renderSong(currentKey);
+  } else {
+    setTimeout(tryRender, 50);
+  }
+}
+tryRender();
+
+// Re-render on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  if(currentKey) resizeTimer = setTimeout(() => renderSong(currentKey), 200);
+});
+
+// ─── YOUR UPLOADS ─────────────────────────────────────────────────────────────
+
+const NOTE_NAMES_SM = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+// MIDI number → note string e.g. 60 → "C4", 61 → "C#4"
+function midiToNoteName(m){
+  return NOTE_NAMES_SM[m % 12] + (Math.floor(m / 12) - 1);
+}
+
+// Render an uploaded MIDI ref (notes are [{midi,timeSec}])
+function renderUpload(ref){
+  // Convert to note-name strings, dedupe consecutive same pitch-class within 0.3s
+  const raw = ref.notes;
+  const deduped = [];
+  for(const n of raw){
+    const p = deduped[deduped.length-1];
+    if(p && p.midi%12===n.midi%12 && n.timeSec-p.timeSec<0.3) continue;
+    deduped.push(n);
+  }
+  const noteStrings = deduped.map(n => midiToNoteName(n.midi));
+
+  // Update info bar
+  const measures = Math.ceil(noteStrings.length / 4);
+  document.getElementById('infoTitle').textContent    = ref.title;
+  document.getElementById('infoBpm').textContent      = '— BPM';
+  document.getElementById('infoNotes').textContent    = noteStrings.length + ' notes';
+  document.getElementById('infoMeasures').textContent = measures + ' measures';
+  document.getElementById('sheetTitle').textContent   = ref.title;
+  document.getElementById('sheetSubtitle').textContent =
+    (ref.composer ? ref.composer + ' · ' : '') + noteStrings.length + ' notes';
+
+  // Deselect built-in song pills
+  document.querySelectorAll('.song-pill').forEach(p => p.classList.remove('active'));
+  currentKey = null;
+
+  // Inject a temporary SONGS entry and render it
+  const tempKey = '__upload__';
+  SONGS[tempKey] = { name: ref.title, bpm: 0, notes: noteStrings };
+  renderSong(tempKey);
+  delete SONGS[tempKey];
+}
+
+// Load library from server
+async function loadUploads(){
+  const section = document.getElementById('uploadsSection');
+  const token   = localStorage.getItem('pc_token');
+  if(!token){
+    section.innerHTML = '<div class="uploads-empty">Sign in to see your uploaded MIDI files.</div>';
+    return;
+  }
+  const API_URL = (typeof getApiUrl === 'function') ? getApiUrl() : (window.location.origin + '/api');
+  try{
+    const r = await fetch(API_URL + '/midi-references', {
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    if(!r.ok) throw new Error('Server returned ' + r.status);
+    const refs = await r.json();
+    if(!refs.length){
+      section.innerHTML = '<div class="uploads-empty">No MIDI files uploaded yet. <a href="analyser.html" style="color:var(--accent2);text-decoration:none;">Upload one →</a></div>';
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'uploads-grid';
+    refs.forEach(ref => {
+      ref.notes = JSON.parse(ref.notes_json || '[]');
+      const card = document.createElement('div');
+      card.className = 'upload-card';
+      card.id = 'ucard-' + ref.id;
+      card.innerHTML = `
+        <div class="upload-card-icon">🎼</div>
+        <div class="upload-card-title">${esc(ref.title)}</div>
+        <div class="upload-card-meta">${ref.composer ? esc(ref.composer) + ' · ' : ''}${ref.note_count} notes · ${ref.uploaded_at}</div>`;
+      card.onclick = () => {
+        document.querySelectorAll('.upload-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        renderUpload(ref);
+        document.getElementById('scoreContainer').scrollIntoView({ behavior:'smooth', block:'start' });
+      };
+      grid.appendChild(card);
+    });
+    section.innerHTML = '';
+    section.appendChild(grid);
+  } catch(e){
+    section.innerHTML = '<div class="uploads-empty" style="color:var(--wrong);">Could not load uploads: ' + e.message + '</div>';
+  }
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+loadUploads();
+</script>
+</body>
+</html>

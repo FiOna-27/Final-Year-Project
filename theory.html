@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piano Coach — Music Theory Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="api-config.js"></script>
+<style>
+  :root{
+  --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a3a;
+  --accent:#c8a96e; --accent2:#7eb8c8; --wrong:#e05a5a; --right:#5ae0a0;
+  --warn:#e0a85a; --text:#e8e8f0; --text-dim:#6a6a8a;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; }
+body::before{ content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; opacity:0.4; }
+
+/*    Header    */
+header{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:10px; }
+.logo{ font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); letter-spacing:0.04em; }
+.logo span{ font-size:0.6rem; color:var(--text-dim); font-family:'Space Mono',monospace; display:block; letter-spacing:0.18em; }
+.nav-btn{ padding:6px 13px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.08em; text-decoration:none; transition:all 0.2s; white-space:nowrap; }
+.nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+/*    Layout    */
+.page-wrap{ display:flex; max-width:1100px; margin:0 auto; padding:28px 22px; gap:28px; align-items:flex-start; }
+
+/*    Sidebar nav    */
+.sidebar{ width:200px; flex-shrink:0; position:sticky; top:80px; }
+.sidebar-title{ font-size:0.52rem; letter-spacing:0.22em; color:var(--text-dim); text-transform:uppercase; margin-bottom:10px; padding:0 4px; }
+.sidebar-link{ display:block; padding:8px 12px; border-radius:7px; font-size:0.63rem; color:var(--text-dim); text-decoration:none; transition:all 0.15s; border:1px solid transparent; margin-bottom:2px; letter-spacing:0.04em; }
+.sidebar-link:hover{ color:var(--text); background:var(--surface); border-color:var(--border); }
+.sidebar-link.active{ color:var(--accent); background:rgba(200,169,110,0.08); border-color:rgba(200,169,110,0.25); }
+.sidebar-sep{ height:1px; background:var(--border); margin:8px 4px; }
+
+/*    Main content    */
+.content{ flex:1; min-width:0; }
+
+/*    Section cards    */
+.theory-section{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px 30px; margin-bottom:22px; scroll-margin-top:90px; }
+.section-eyebrow{ font-size:0.52rem; letter-spacing:0.22em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+.section-title{ font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--accent); margin-bottom:6px; }
+.section-intro{ font-size:0.72rem; color:var(--text-dim); line-height:1.8; margin-bottom:22px; }
+
+/*    Prose    */
+.prose{ font-size:0.72rem; line-height:1.9; color:var(--text-dim); }
+.prose strong{ color:var(--text); font-weight:700; }
+.prose em{ color:var(--accent2); font-style:italic; }
+
+/*    Keyboard diagram    */
+.keyboard-wrap{ overflow-x:auto; margin:18px 0; }
+.keyboard{ display:flex; position:relative; height:90px; width:fit-content; gap:2px; user-select:none; }
+.wkey{ width:32px; height:90px; background:#f0ece0; border:1px solid #c8c4b8; border-radius:0 0 4px 4px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:5px; font-size:0.45rem; color:#999; flex-shrink:0; transition:background 0.1s; }
+.wkey.highlight{ background:#c8a96e; color:#2a1a08; font-weight:700; }
+.wkey.highlight2{ background:#7eb8c8; color:#0a1a24; font-weight:700; }
+.wkey.highlight3{ background:#5ae0a0; color:#0a1a0a; font-weight:700; }
+.bkey{ width:22px; height:56px; background:#1a1a22; border:1px solid #333; border-radius:0 0 3px 3px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3px; font-size:0.38rem; color:#666; position:absolute; top:0; z-index:2; flex-shrink:0; transition:background 0.1s; }
+.bkey.highlight{ background:#c8a96e; color:#2a1a08; font-weight:700; }
+.bkey.highlight2{ background:#7eb8c8; color:#0a1a24; font-weight:700; }
+.bkey.highlight3{ background:#5ae0a0; color:#0a1a0a; font-weight:700; }
+.kb-label{ font-size:0.58rem; color:var(--text-dim); margin-top:8px; text-align:center; }
+
+/*    Scale/interval tables    */
+.info-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin:16px 0; }
+.info-box{ background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.info-box-label{ font-size:0.52rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
+.info-box-value{ font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--accent2); }
+.info-box-sub{ font-size:0.58rem; color:var(--text-dim); margin-top:3px; line-height:1.5; }
+
+/*    Step patterns    */
+.step-row{ display:flex; align-items:center; gap:0; margin:14px 0; flex-wrap:wrap; }
+.step-note{ padding:8px 12px; border-radius:7px; background:var(--surface2); border:1px solid var(--border); font-size:0.68rem; font-weight:700; color:var(--accent2); min-width:42px; text-align:center; }
+.step-note.root{ border-color:var(--accent); color:var(--accent); background:rgba(200,169,110,0.1); }
+.step-note.fifth{ border-color:var(--right); color:var(--right); background:rgba(90,224,160,0.07); }
+.step-arrow{ font-size:0.55rem; color:var(--text-dim); padding:0 6px; letter-spacing:0.05em; white-space:nowrap; }
+.step-arrow.half{ color:var(--warn); }
+.step-arrow.whole{ color:var(--accent2); }
+
+/*    Chord boxes    */
+.chord-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin:16px 0; }
+.chord-box{ background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; transition:border-color 0.2s; }
+.chord-box:hover{ border-color:var(--accent2); }
+.chord-name{ font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--accent); margin-bottom:4px; }
+.chord-notes{ font-size:0.62rem; color:var(--accent2); margin-bottom:4px; font-weight:700; letter-spacing:0.06em; }
+.chord-desc{ font-size:0.56rem; color:var(--text-dim); line-height:1.6; }
+
+/*    Interval table    */
+.interval-table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:0.63rem; }
+.interval-table th{ padding:10px 12px; text-align:left; font-size:0.52rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-dim); border-bottom:1px solid var(--border); }
+.interval-table td{ padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text-dim); vertical-align:top; }
+.interval-table td:first-child{ color:var(--accent2); font-weight:700; }
+.interval-table tr:last-child td{ border-bottom:none; }
+.interval-table tr:hover td{ background:var(--surface2); }
+
+/*    Time signature diagram    */
+.time-sigs{ display:flex; gap:14px; flex-wrap:wrap; margin:16px 0; }
+.time-sig-box{ background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px 20px; text-align:center; min-width:120px; }
+.time-sig-num{ font-family:'Playfair Display',serif; font-size:2.2rem; line-height:1; color:var(--accent); display:flex; flex-direction:column; align-items:center; }
+.time-sig-num span{ line-height:1.1; }
+.time-sig-name{ font-size:0.62rem; font-weight:700; color:var(--text); margin:8px 0 4px; }
+.time-sig-desc{ font-size:0.56rem; color:var(--text-dim); line-height:1.6; }
+
+/*    Dynamic marks    */
+.dynamics-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin:16px 0; }
+.dyn-box{ background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; text-align:center; }
+.dyn-symbol{ font-family:'Playfair Display',serif; font-style:italic; font-size:1.8rem; color:var(--accent); line-height:1; margin-bottom:6px; }
+.dyn-name{ font-size:0.6rem; font-weight:700; color:var(--text); margin-bottom:3px; }
+.dyn-desc{ font-size:0.54rem; color:var(--text-dim); }
+
+/*    Callout box    */
+.callout{ border-left:3px solid var(--accent2); padding:14px 18px; background:rgba(126,184,200,0.06); border-radius:0 8px 8px 0; margin:16px 0; }
+.callout.gold{ border-left-color:var(--accent); background:rgba(200,169,110,0.06); }
+.callout.green{ border-left-color:var(--right); background:rgba(90,224,160,0.06); }
+.callout-title{ font-size:0.58rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:5px; }
+.callout.gold .callout-title{ color:var(--accent); }
+.callout.green .callout-title{ color:var(--right); }
+.callout-body{ font-size:0.68rem; color:var(--text-dim); line-height:1.8; }
+.callout-body strong{ color:var(--text); }
+
+/*    Tags    */
+.tag{ display:inline-block; font-size:0.5rem; letter-spacing:0.12em; padding:3px 8px; border-radius:4px; margin-bottom:14px; }
+.tag-beginner{ background:rgba(90,224,160,0.12); color:var(--right); }
+.tag-intermediate{ background:rgba(126,184,200,0.12); color:var(--accent2); }
+
+/*    Mobile    */
+@media(max-width:700px){
+  .page-wrap{ flex-direction:column; padding:16px 14px; gap:16px; }
+  .sidebar{ width:100%; position:static; display:flex; gap:6px; flex-wrap:wrap; }
+  .sidebar-title{ display:none; }
+  .sidebar-sep{ display:none; }
+  .sidebar-link{ padding:6px 10px; font-size:0.58rem; }
+  .theory-section{ padding:20px 18px; }
+  .section-title{ font-size:1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Piano Coach <span>MUSIC THEORY LIBRARY</span></div>
+  <div style="display:flex;gap:8px;">
+    <a class="nav-btn" href="piano-coach-v3.5.html">🎹 Practice</a>
+    <a class="nav-btn" href="dashboard.html">← Dashboard</a>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <!--Sidebar-->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">Contents</div>
+    <a class="sidebar-link active" href="#notes"      onclick="setActive(this)">The Notes</a>
+    <a class="sidebar-link"        href="#keyboard"   onclick="setActive(this)">The Keyboard</a>
+    <div class="sidebar-sep"></div>
+    <a class="sidebar-link"        href="#scales"     onclick="setActive(this)">Scales</a>
+    <a class="sidebar-link"        href="#intervals"  onclick="setActive(this)">Intervals</a>
+    <a class="sidebar-link"        href="#chords"     onclick="setActive(this)">Chords</a>
+    <div class="sidebar-sep"></div>
+    <a class="sidebar-link"        href="#rhythm"     onclick="setActive(this)">Rhythm</a>
+    <a class="sidebar-link"        href="#keys"       onclick="setActive(this)">Key Signatures</a>
+    <a class="sidebar-link"        href="#dynamics"   onclick="setActive(this)">Dynamics</a>
+    <a class="sidebar-link"        href="#terms"      onclick="setActive(this)">Common Terms</a>
+  </nav>
+
+  <!--Content-->
+  <div class="content">
+
+    <!-- 1. THE NOTES -->
+    <div class="theory-section" id="notes">
+      <div class="section-eyebrow">Section 1</div>
+      <div class="section-title">The Notes</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        Western music uses 12 distinct pitches that repeat in higher and lower
+        registers called <strong>octaves</strong>. Seven have letter names —
+        <strong>A B C D E F G</strong> — and five are sharps or flats that sit
+        between them.
+      </p>
+
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-box-label">Natural notes</div>
+          <div class="info-box-value">A B C D E F G</div>
+          <div class="info-box-sub">7 notes — the white keys on a piano</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Sharp (♯)</div>
+          <div class="info-box-value" style="color:var(--warn);">One step up</div>
+          <div class="info-box-sub">C♯ is one semitone above C</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Flat (♭)</div>
+          <div class="info-box-value" style="color:var(--accent);">One step down</div>
+          <div class="info-box-sub">D♭ is one semitone below D</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Enharmonics</div>
+          <div class="info-box-value" style="color:var(--right);">Same pitch</div>
+          <div class="info-box-sub">C♯ and D♭ are the same key</div>
+        </div>
+      </div>
+
+      <div class="callout gold">
+        <div class="callout-title">The 12 semitones in order</div>
+        <div class="callout-body">
+          <strong>C · C♯/D♭ · D · D♯/E♭ · E · F · F♯/G♭ · G · G♯/A♭ · A · A♯/B♭ · B</strong>
+          — then the pattern repeats one octave higher.
+        </div>
+      </div>
+
+      <p class="prose" style="margin-top:14px;">
+        An <strong>octave</strong> is the distance between two notes with the same
+        letter name — for example C3 and C4. The number refers to the octave
+        register: middle C on a standard piano is <em>C4</em>. Each octave up
+        doubles the frequency of the note.
+      </p>
+    </div>
+
+    <!-- 2. THE KEYBOARD-->
+    <div class="theory-section" id="keyboard">
+      <div class="section-eyebrow">Section 2</div>
+      <div class="section-title">The Keyboard</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        A standard piano has 88 keys spanning over 7 octaves. The repeating
+        pattern of 7 white and 5 black keys makes every octave identical in layout.
+        Recognising the pattern is the fastest way to find any note.
+      </p>
+
+      <p class="prose" style="margin-bottom:12px;">
+        The black keys appear in <strong>groups of 2 and 3</strong>. This is
+        your map: <em>C is always to the left of a group of 2 black keys.</em>
+        Find any group of 2 black keys — the white key immediately left is C.
+      </p>
+
+      <!-- One octave keyboard diagram (C4–C5) -->
+      <div class="keyboard-wrap">
+        <div style="position:relative;width:fit-content;">
+          <div class="keyboard" id="kb">
+            <!-- White keys C4–C5 -->
+            <div class="wkey highlight" id="wC4">C4</div>
+            <div class="wkey" id="wD4">D</div>
+            <div class="wkey" id="wE4">E</div>
+            <div class="wkey" id="wF4">F</div>
+            <div class="wkey" id="wG4">G</div>
+            <div class="wkey" id="wA4">A</div>
+            <div class="wkey" id="wB4">B</div>
+            <div class="wkey highlight" id="wC5">C5</div>
+          </div>
+          <!-- Black keys overlaid with JS -->
+        </div>
+        <div class="kb-label">Middle C (C4) highlighted in gold — one full octave shown</div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Finding Middle C</div>
+        <div class="callout-body">
+          Middle C (C4) sits roughly in the centre of a full-size 88-key piano —
+          just to the left of the two black keys nearest the middle. On a
+          61-key keyboard it is the C closest to the centre.
+          In Piano Coach, all songs are labelled with octave numbers so
+          <strong>C4</strong> always means middle C.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SCALES -->
+    <div class="theory-section" id="scales">
+      <div class="section-eyebrow">Section 3</div>
+      <div class="section-title">Scales</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        A <strong>scale</strong> is an ordered set of notes that defines the
+        tonal colour of a piece. The two most important are the
+        <strong>major</strong> and <strong>natural minor</strong> scales.
+        Every song in the Piano Coach library uses notes drawn from one of these.
+      </p>
+
+      <p class="prose" style="margin-bottom:8px;">
+        Scales are built from a formula of <strong>whole steps (W = 2 semitones)</strong>
+        and <strong>half steps (H = 1 semitone)</strong>.
+      </p>
+
+      <p class="prose" style="margin-bottom:14px;"><strong>Major scale formula: W W H W W W H</strong></p>
+
+      <!-- C Major scale steps -->
+      <div class="step-row">
+        <div class="step-note root">C</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">D</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">E</div>
+        <div class="step-arrow half"> H ›</div>
+        <div class="step-note">F</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">G</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">A</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">B</div>
+        <div class="step-arrow half"> H ›</div>
+        <div class="step-note root">C</div>
+      </div>
+
+      <p class="prose" style="margin:18px 0 8px;"><strong>Natural minor scale formula: W H W W H W W</strong></p>
+
+      <!-- A Natural Minor scale steps -->
+      <div class="step-row">
+        <div class="step-note root">A</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">B</div>
+        <div class="step-arrow half"> H ›</div>
+        <div class="step-note">C</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">D</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">E</div>
+        <div class="step-arrow half"> H ›</div>
+        <div class="step-note">F</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note">G</div>
+        <div class="step-arrow whole"> W ›</div>
+        <div class="step-note root">A</div>
+      </div>
+
+      <div class="callout green" style="margin-top:18px;">
+        <div class="callout-title">Relative major & minor</div>
+        <div class="callout-body">
+          Every major scale shares all its notes with a <strong>relative minor</strong>
+          starting on the 6th degree. C major and A minor use exactly the same notes —
+          the difference is which note feels like "home". This is why A minor is
+          called the relative minor of C major.
+        </div>
+      </div>
+
+      <div class="info-grid" style="margin-top:18px;">
+        <div class="info-box">
+          <div class="info-box-label">Major — sounds</div>
+          <div class="info-box-value">Bright, happy</div>
+          <div class="info-box-sub">Twinkle Twinkle, Ode to Joy, Jingle Bells</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Minor — sounds</div>
+          <div class="info-box-value" style="color:var(--accent);">Dark, emotional</div>
+          <div class="info-box-sub">Für Elise, Moonlight Sonata</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Practice tip</div>
+          <div class="info-box-value" style="color:var(--right);">Start with C</div>
+          <div class="info-box-sub">C major uses only white keys — no sharps or flats</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. INTERVALS  -->
+    <div class="theory-section" id="intervals">
+      <div class="section-eyebrow">Section 4</div>
+      <div class="section-title">Intervals</div>
+      <span class="tag tag-intermediate">Intermediate</span>
+      <p class="section-intro">
+        An <strong>interval</strong> is the distance between two notes measured
+        in semitones. Knowing intervals lets you build chords, recognise melodies
+        by ear, and understand why certain note combinations sound the way they do.
+      </p>
+
+      <table class="interval-table">
+        <thead>
+          <tr>
+            <th>Interval</th>
+            <th>Semitones</th>
+            <th>Example (from C)</th>
+            <th>Sound character</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Unison</td><td>0</td><td>C to C</td><td>Same pitch</td></tr>
+          <tr><td>Minor 2nd</td><td>1</td><td>C to C♯</td><td>Very tense — dissonant</td></tr>
+          <tr><td>Major 2nd</td><td>2</td><td>C to D</td><td>Stepwise — scale tone</td></tr>
+          <tr><td>Minor 3rd</td><td>3</td><td>C to E♭</td><td>Warm — minor chord base</td></tr>
+          <tr><td>Major 3rd</td><td>4</td><td>C to E</td><td>Bright — major chord base</td></tr>
+          <tr><td>Perfect 4th</td><td>5</td><td>C to F</td><td>Open, stable</td></tr>
+          <tr><td>Tritone</td><td>6</td><td>C to F♯</td><td>Very tense — unstable</td></tr>
+          <tr><td>Perfect 5th</td><td>7</td><td>C to G</td><td>Strong, open — very stable</td></tr>
+          <tr><td>Minor 6th</td><td>8</td><td>C to A♭</td><td>Expressive, slightly dark</td></tr>
+          <tr><td>Major 6th</td><td>9</td><td>C to A</td><td>Sweet, warm</td></tr>
+          <tr><td>Minor 7th</td><td>10</td><td>C to B♭</td><td>Jazzy — wants to resolve</td></tr>
+          <tr><td>Major 7th</td><td>11</td><td>C to B</td><td>Tense — strong pull to octave</td></tr>
+          <tr><td>Octave</td><td>12</td><td>C to C (higher)</td><td>Complete — perfect resolution</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <div class="callout-title">Consonance vs. Dissonance</div>
+        <div class="callout-body">
+          <strong>Consonant</strong> intervals (unison, 3rds, 5ths, 6ths, octave) sound
+          stable and pleasing on their own. <strong>Dissonant</strong> intervals
+          (2nds, 7ths, tritone) create tension that the ear wants resolved —
+          this push and pull is what gives music its forward motion.
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. CHORDS-->
+    <div class="theory-section" id="chords">
+      <div class="section-eyebrow">Section 5</div>
+      <div class="section-title">Chords</div>
+      <span class="tag tag-intermediate">Intermediate</span>
+      <p class="section-intro">
+        A <strong>chord</strong> is three or more notes played simultaneously.
+        Triads — three-note chords — are the foundation of virtually all Western
+        harmony. They are built by stacking intervals of thirds above a
+        <strong>root note</strong>.
+      </p>
+
+      <div class="chord-grid">
+        <div class="chord-box">
+          <div class="chord-name">Major</div>
+          <div class="chord-notes">Root + M3 + P5</div>
+          <div class="chord-desc">C major: C E G<br>Bright, happy sound. Most common chord type.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Minor</div>
+          <div class="chord-notes">Root + m3 + P5</div>
+          <div class="chord-desc">A minor: A C E<br>Darker, more emotional than major.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Diminished</div>
+          <div class="chord-notes">Root + m3 + d5</div>
+          <div class="chord-desc">B dim: B D F<br>Tense, unstable — used for drama.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Augmented</div>
+          <div class="chord-notes">Root + M3 + A5</div>
+          <div class="chord-desc">C aug: C E G♯<br>Mysterious, dreamlike quality.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Major 7th</div>
+          <div class="chord-notes">Root + M3 + P5 + M7</div>
+          <div class="chord-desc">Cmaj7: C E G B<br>Rich, jazzy and warm.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Dominant 7th</div>
+          <div class="chord-notes">Root + M3 + P5 + m7</div>
+          <div class="chord-desc">G7: G B D F<br>Strong pull toward resolution.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Minor 7th</div>
+          <div class="chord-notes">Root + m3 + P5 + m7</div>
+          <div class="chord-desc">Am7: A C E G<br>Smooth, used heavily in jazz and pop.</div>
+        </div>
+        <div class="chord-box">
+          <div class="chord-name">Suspended 4th</div>
+          <div class="chord-notes">Root + P4 + P5</div>
+          <div class="chord-desc">Csus4: C F G<br>Ambiguous — neither major nor minor.</div>
+        </div>
+      </div>
+
+      <div class="callout gold" style="margin-top:4px;">
+        <div class="callout-title">The I–IV–V progression</div>
+        <div class="callout-body">
+          The three most important chords in any key are built on the
+          <strong>1st, 4th, and 5th</strong> scale degrees. In C major that is
+          <strong>C – F – G</strong>. This progression underlies hundreds of songs
+          across every genre from classical to pop to blues.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. RHYTHM -->
+    <div class="theory-section" id="rhythm">
+      <div class="section-eyebrow">Section 6</div>
+      <div class="section-title">Rhythm & Time</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        <strong>Rhythm</strong> is how music is organised in time. A steady pulse
+        called the <strong>beat</strong> divides music into equal units.
+        The <strong>time signature</strong> tells you how many beats are in each
+        measure and what note value counts as one beat.
+      </p>
+
+      <div class="time-sigs">
+        <div class="time-sig-box">
+          <div class="time-sig-num"><span>4</span><span>4</span></div>
+          <div class="time-sig-name">Common time</div>
+          <div class="time-sig-desc">4 beats per measure. Quarter note = 1 beat. Most common in pop, classical, and folk.</div>
+        </div>
+        <div class="time-sig-box">
+          <div class="time-sig-num"><span>3</span><span>4</span></div>
+          <div class="time-sig-name">Waltz time</div>
+          <div class="time-sig-desc">3 beats per measure. Strong–weak–weak feel. Used in waltzes and many classical pieces.</div>
+        </div>
+        <div class="time-sig-box">
+          <div class="time-sig-num"><span>6</span><span>8</span></div>
+          <div class="time-sig-name">Compound duple</div>
+          <div class="time-sig-desc">6 eighth notes per measure, felt in 2 groups of 3. Flowing, lilting character.</div>
+        </div>
+        <div class="time-sig-box">
+          <div class="time-sig-num"><span>2</span><span>4</span></div>
+          <div class="time-sig-name">March time</div>
+          <div class="time-sig-desc">2 beats per measure. Strong–weak feel. Used in marches and polkas.</div>
+        </div>
+      </div>
+
+      <p class="prose" style="margin-bottom:14px;"><strong>Note durations in 4/4 time:</strong></p>
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-box-label">Whole note</div>
+          <div class="info-box-value">4 beats</div>
+          <div class="info-box-sub">Fills an entire measure in 4/4</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Half note</div>
+          <div class="info-box-value">2 beats</div>
+          <div class="info-box-sub">Two per measure in 4/4</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Quarter note</div>
+          <div class="info-box-value">1 beat</div>
+          <div class="info-box-sub">The basic pulse in 4/4 — BPM counts these</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Eighth note</div>
+          <div class="info-box-value">½ beat</div>
+          <div class="info-box-sub">Two per quarter note — often felt as "and"</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Sixteenth note</div>
+          <div class="info-box-value">¼ beat</div>
+          <div class="info-box-sub">Four per quarter note — fast passages</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">Dotted note</div>
+          <div class="info-box-value">× 1.5</div>
+          <div class="info-box-sub">A dot adds half the note's value — dotted quarter = 1.5 beats</div>
+        </div>
+      </div>
+
+      <div class="callout green" style="margin-top:4px;">
+        <div class="callout-title">BPM in Piano Coach</div>
+        <div class="callout-body">
+          BPM (beats per minute) sets the speed. At <strong>60 BPM</strong> each
+          quarter note lasts exactly 1 second. At <strong>120 BPM</strong> it lasts
+          0.5 seconds. The rhythm trainer in Piano Coach measures how closely
+          your note timings land on the expected beat positions.
+        </div>
+      </div>
+    </div>
+
+    <!--  7. KEY SIGNATURES-->
+    <div class="theory-section" id="keys">
+      <div class="section-eyebrow">Section 7</div>
+      <div class="section-title">Key Signatures</div>
+      <span class="tag tag-intermediate">Intermediate</span>
+      <p class="section-intro">
+        A <strong>key signature</strong> tells you which notes are consistently
+        sharp or flat throughout a piece, so composers don't have to write accidentals
+        on every single note. It appears at the start of each staff, right after the clef.
+      </p>
+
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-box-label">C major / A minor</div>
+          <div class="info-box-value">No sharps or flats</div>
+          <div class="info-box-sub">All white keys — the easiest starting point</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">G major / E minor</div>
+          <div class="info-box-value" style="color:var(--warn);">1 sharp</div>
+          <div class="info-box-sub">F♯ — used in many folk and classical pieces</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">D major / B minor</div>
+          <div class="info-box-value" style="color:var(--warn);">2 sharps</div>
+          <div class="info-box-sub">F♯ C♯</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">F major / D minor</div>
+          <div class="info-box-value" style="color:var(--accent);">1 flat</div>
+          <div class="info-box-sub">B♭ — very common in orchestral music</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">B♭ major / G minor</div>
+          <div class="info-box-value" style="color:var(--accent);">2 flats</div>
+          <div class="info-box-sub">B♭ E♭ — common in wind music</div>
+        </div>
+        <div class="info-box">
+          <div class="info-box-label">E♭ major / C minor</div>
+          <div class="info-box-value" style="color:var(--accent);">3 flats</div>
+          <div class="info-box-sub">B♭ E♭ A♭ — Moonlight Sonata uses C♯ minor</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The Circle of Fifths</div>
+        <div class="callout-body">
+          Moving clockwise around the <strong>Circle of Fifths</strong> adds one
+          sharp each step. Moving anticlockwise adds one flat. Adjacent keys on the
+          circle are very closely related — pieces often modulate between them.
+          C major sits at the top with no accidentals; C♯ major (7 sharps) and
+          C♭ major (7 flats) sit at the bottom.
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. DYNAMICS-->
+    <div class="theory-section" id="dynamics">
+      <div class="section-eyebrow">Section 8</div>
+      <div class="section-title">Dynamics</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        <strong>Dynamics</strong> indicate how loudly or softly to play.
+        These markings come from Italian and appear on sheet music as abbreviations.
+        Controlling dynamics is one of the most important expressive tools available to a pianist.
+      </p>
+
+      <div class="dynamics-grid">
+        <div class="dyn-box">
+          <div class="dyn-symbol">pp</div>
+          <div class="dyn-name">Pianissimo</div>
+          <div class="dyn-desc">Very soft</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol">p</div>
+          <div class="dyn-name">Piano</div>
+          <div class="dyn-desc">Soft</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol">mp</div>
+          <div class="dyn-name">Mezzo-piano</div>
+          <div class="dyn-desc">Moderately soft</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol">mf</div>
+          <div class="dyn-name">Mezzo-forte</div>
+          <div class="dyn-desc">Moderately loud</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol">f</div>
+          <div class="dyn-name">Forte</div>
+          <div class="dyn-desc">Loud</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol">ff</div>
+          <div class="dyn-name">Fortissimo</div>
+          <div class="dyn-desc">Very loud</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol" style="font-size:1.2rem;">cresc.</div>
+          <div class="dyn-name">Crescendo</div>
+          <div class="dyn-desc">Gradually getting louder</div>
+        </div>
+        <div class="dyn-box">
+          <div class="dyn-symbol" style="font-size:1.2rem;">dim.</div>
+          <div class="dyn-name">Diminuendo</div>
+          <div class="dyn-desc">Gradually getting softer</div>
+        </div>
+      </div>
+
+      <div class="callout gold">
+        <div class="callout-title">Why dynamics matter for beginners</div>
+        <div class="callout-body">
+          Many beginners play everything at the same volume. Adding even simple
+          loud/soft contrast immediately makes a piece more musical.
+          Start by playing the first note of each phrase a little louder —
+          this single change creates natural phrase shaping without learning every marking.
+        </div>
+      </div>
+    </div>
+
+    <!--9. COMMON TERMS -->
+    <div class="theory-section" id="terms">
+      <div class="section-eyebrow">Section 9</div>
+      <div class="section-title">Common Terms</div>
+      <span class="tag tag-beginner">Beginner</span>
+      <p class="section-intro">
+        Sheet music and teachers use Italian and other foreign-language terms that can
+        be confusing at first. Here are the most common ones you will encounter in the
+        pieces available in Piano Coach.
+      </p>
+
+      <table class="interval-table">
+        <thead>
+          <tr><th>Term</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Tempo</td><td>The speed of the music, measured in BPM</td></tr>
+          <tr><td>Andante</td><td>Walking pace — roughly 70–90 BPM</td></tr>
+          <tr><td>Moderato</td><td>Moderate speed — roughly 90–115 BPM</td></tr>
+          <tr><td>Allegro</td><td>Fast and lively — roughly 120–160 BPM</td></tr>
+          <tr><td>Legato</td><td>Notes played smoothly and connected</td></tr>
+          <tr><td>Staccato</td><td>Notes played short and detached — marked with a dot above/below</td></tr>
+          <tr><td>Accent (>)</td><td>Play this note with extra emphasis</td></tr>
+          <tr><td>Fermata (𝄐)</td><td>Hold this note longer than its written value</td></tr>
+          <tr><td>D.C. al Fine</td><td>Go back to the beginning and play until "Fine" (the end)</td></tr>
+          <tr><td>D.S. al Coda</td><td>Go back to the sign (𝄋) and play to the coda symbol, then jump to coda</td></tr>
+          <tr><td>Repeat (‖:  :‖)</td><td>Play the section between the repeat signs twice</td></tr>
+          <tr><td>Rit. / Ritardando</td><td>Gradually slow down</td></tr>
+          <tr><td>A tempo</td><td>Return to the original speed after a change</td></tr>
+          <tr><td>Pedal (Ped / 𝄌)</td><td>Press the sustain pedal — hold notes ringing together</td></tr>
+          <tr><td>Tie</td><td>A curved line connecting two same-pitch notes — hold for combined duration</td></tr>
+          <tr><td>Slur</td><td>A curved line over different pitches — play legato through that phrase</td></tr>
+          <tr><td>Trill (tr)</td><td>Rapidly alternate between the written note and the one above it</td></tr>
+          <tr><td>Clef</td><td>Symbol at the start of a staff showing which lines represent which notes</td></tr>
+          <tr><td>Treble clef</td><td>The right-hand staff — covers C4 and above for most piano music</td></tr>
+          <tr><td>Bass clef</td><td>The left-hand staff — covers notes below middle C</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- end .content -->
+</div><!-- end .page-wrap -->
+
+<script>
+
+//    Sidebar active state                                                       
+function setActive(el){
+  document.querySelectorAll('.sidebar-link').forEach(a => a.classList.remove('active'));
+  el.classList.add('active');
+}
+
+//    Highlight active section on scroll                                        
+const sections = ['notes','keyboard','scales','intervals','chords','rhythm','keys','dynamics','terms'];
+const links = {};
+sections.forEach(id => {
+  links[id] = document.querySelector(`.sidebar-link[href="#${id}"]`);
+});
+
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if(ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    let current = sections[0];
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if(el && el.getBoundingClientRect().top <= 100) current = id;
+    });
+    document.querySelectorAll('.sidebar-link').forEach(a => a.classList.remove('active'));
+    if(links[current]) links[current].classList.add('active');
+    ticking = false;
+  });
+});
+
+//    Draw black keys on keyboard diagram                                       
+(function buildKeyboard(){
+  const kb = document.getElementById('kb');
+  if(!kb) return;
+  const whites = kb.querySelectorAll('.wkey');
+  // Black key positions: between W0-W1, W1-W2, W3-W4, W4-W5, W5-W6
+  // (no black key between E-F or B-C)
+  const blackSlots = [0,1,3,4,5]; // index of white key to the LEFT of each black key
+  const labels     = ['C♯','D♯','F♯','G♯','A♯'];
+  const kbLeft = kb.getBoundingClientRect ? 0 : 0;
+  const W_WIDTH = 32, W_GAP = 2, B_WIDTH = 22;
+
+  blackSlots.forEach((slot, i) => {
+    const bk = document.createElement('div');
+    bk.className = 'bkey';
+    bk.textContent = labels[i];
+    // Position: left edge of white[slot] + white width - black width/2 + gap offset
+    const leftPx = slot * (W_WIDTH + W_GAP) + W_WIDTH - B_WIDTH / 2;
+    bk.style.left = leftPx + 'px';
+    kb.style.position = 'relative';
+    kb.appendChild(bk);
+  });
+})();
+
+</script>
+</body>
+</html>
