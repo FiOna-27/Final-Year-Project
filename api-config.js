@@ -1,4 +1,4 @@
-// ── Piano Coach · Shared API Config ───────────────────────────────────────
+//    Piano Coach · Shared API Config                                        
 // All HTML files include this script. It exposes a single global: getApiUrl()
 //
 // Since app.py now serves the HTML files AND the API, the API is always

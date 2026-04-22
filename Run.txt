@@ -1,0 +1,1 @@
+python app.py  --model "checkpoints\best_model.pt" --nsynth_model "nsynth_checkpoints\nsynth_best_model.pt" --host 0.0.0.0

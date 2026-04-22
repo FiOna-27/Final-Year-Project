@@ -170,7 +170,7 @@ const token = localStorage.getItem('pc_token');
 let currentUser = null;
 try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
 
-// ── Level selector ────────────────────────────────────────────────────────────
+//    Level selector                                                             
 function applyLevel(level){
   document.getElementById('cardBeginner').classList.toggle('active',     level==='beginner');
   document.getElementById('cardIntermediate').classList.toggle('active', level==='intermediate');
@@ -197,7 +197,7 @@ async function setLevel(level){
 
 if(currentUser) applyLevel(currentUser.level);
 
-// ── Server status ─────────────────────────────────────────────────────────────
+//    Server status                                                              
 async function checkServer(){
   const dot  = document.getElementById('statusDot');
   const text = document.getElementById('statusText');
@@ -223,14 +223,14 @@ async function checkServer(){
 }
 checkServer();
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+//    Toast                                                                      
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
 
-// ── URL helpers ───────────────────────────────────────────────────────────────
+//    URL helpers                                                                
 function loadCurrent(){
   const url = getApiUrl();
   document.getElementById('currentUrl').textContent = url;

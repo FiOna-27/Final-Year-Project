@@ -1,31 +1,3 @@
-#!/usr/bin/env python3
-"""
-app.py — Piano Coach  · Auth + Model Server
-=============================================
-Replaces serve_model.py.  Handles:
-  • User registration / login  (JWT tokens)
-  • User level management      (beginner / intermediate)
-  • Real-time note inference    (POST /api/predict)
-
-SETUP:
-    pip install flask flask-cors flask-jwt-extended flask-bcrypt flask-sqlalchemy torch librosa numpy
-
-USAGE:
-    python app.py --model "E:\\TWOFYP\\checkpoints\\best_model.pt"
-
-    Then open login.html in your browser.
-
-ENDPOINTS:
-    POST /api/register          { username, email, password }
-    POST /api/login             { email, password }  → { token, user }
-    GET  /api/me                (JWT required)       → user info
-    PUT  /api/me/level          (JWT required)       { level: "beginner"|"intermediate" }
-    POST /api/sessions         (JWT required)       { song_key, song_name, correct, wrong, accuracy, timing_avg_ms, duration_secs }
-    GET  /api/analytics        (JWT required)       → sessions_by_day, streak, totals, song_breakdown, recent
-    GET  /api/status            public               → server + model info
-    POST /api/predict           (JWT required)       { audio, sr, yin_midi } → predictions
-"""
-
 import argparse, sys, os
 from pathlib import Path
 from datetime import timedelta
@@ -51,12 +23,12 @@ try:
 except ImportError:
     NSYNTH_AVAILABLE = False
 
-# ─── APP SETUP ────────────────────────────────────────────────────────────────
+#     APP SETUP                                                                 
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# ─── STATIC FILE SERVING ──────────────────────────────────────────────────────
+#     STATIC FILE SERVING                                                       
 # Serve all HTML/JS/JSON/PNG files from the same directory as app.py.
 # This means you only need ONE ngrok tunnel (port 5000) for everything.
 
@@ -86,7 +58,7 @@ db      = SQLAlchemy(app)
 bcrypt  = Bcrypt(app)
 jwt     = JWTManager(app)
 
-# ─── MODELS ───────────────────────────────────────────────────────────────────
+#     MODELS                                                                    
 
 VALID_LEVELS = {"beginner", "intermediate", "expert"}
 
@@ -147,18 +119,18 @@ class MidiReference(db.Model):
     uploaded_at = db.Column(db.DateTime,   server_default=db.func.now())
 
 
-# ─── CNN / INFERENCE GLOBALS ──────────────────────────────────────────────────
+#     CNN / INFERENCE GLOBALS                                                   
 
 CNN_MODEL    = None
 DEVICE       = None
 MODEL_INFO   = {}
 BEST_THRESHOLD = 0.35   # default; overridden by best_threshold.pt when model loads
 
-# ── NSynth note classifier (beginner mode) ────────────────────────────────────
+#    NSynth note classifier (beginner mode)                                     
 NSYNTH_MODEL      = None
 NSYNTH_MODEL_INFO = {}
 
-# ── Temporal smoothing — rolling average of last N predictions ────────────────
+#    Temporal smoothing — rolling average of last N predictions                 
 # Averaging the last 3 frames suppresses one-off false triggers while
 # keeping genuine sustained notes stable.
 SMOOTH_WINDOW = 3
@@ -302,7 +274,7 @@ def run_inference(audio: np.ndarray, sr: int, yin_midi: int, level: str = 'begin
             "model_used":    "nsynth+cnn",
         }
 
-    # ── EXPERT / FALLBACK — MAESTRO CNN only ─────────────────────────────────
+    #    EXPERT / FALLBACK — MAESTRO CNN only                                  
     # Also used when NSynth model is not loaded (graceful fallback)
     elif CNN_MODEL is not None:
         with torch.no_grad():
@@ -338,12 +310,12 @@ def run_inference(audio: np.ndarray, sr: int, yin_midi: int, level: str = 'begin
             "model_used":    "cnn",
         }
 
-    # ── No model available ────────────────────────────────────────────────────
+    #    No model available                                                     
     else:
         raise RuntimeError("No model loaded — start app.py with --model and/or --nsynth_model")
 
 
-# ─── AUTH ROUTES ──────────────────────────────────────────────────────────────
+#     AUTH ROUTES                                                               
 
 # Registration route: validates input, checks for duplicates, hashes password, creates user, returns JWT token and user info on success
 @app.route("/api/register", methods=["POST"])
@@ -411,7 +383,7 @@ def update_level():
     return jsonify({"user": user.to_dict()}), 200
 
 
-# ─── MODEL / INFERENCE ROUTES ─────────────────────────────────────────────────
+#     MODEL / INFERENCE ROUTES                                                  
 
 @app.route("/api/status", methods=["GET"])
 def status():
@@ -458,7 +430,7 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 
-# ─── SESSION + ANALYTICS ROUTES ──────────────────────────────────────────────
+#     SESSION + ANALYTICS ROUTES                                               
 
 @app.route("/api/sessions", methods=["POST"])
 @jwt_required()
@@ -506,9 +478,9 @@ def analytics():
                 .order_by(Session.played_at.desc())
                 .all())
 
-    # ── sessions by day (last 30 days) ────────────────────────────────────────
+    #    sessions by day (last 30 days)                                         
     today     = datetime.now(timezone.utc).date()
-    day_map   = {}   # date_str → {count, acc_sum}
+    day_map   = {}   # date_str to {count, acc_sum}
     for s in all_sess:
         if not s.played_at: continue
         d = s.played_at.date()
@@ -532,7 +504,7 @@ def analytics():
         else:
             sessions_by_day.append({"date": key, "count": 0, "avg_accuracy": 0})
 
-    # ── streak ────────────────────────────────────────────────────────────────
+    #    streak                                                                 
     active_dates = sorted({
         s.played_at.date() for s in all_sess if s.played_at
     }, reverse=True)
@@ -545,13 +517,13 @@ def analytics():
         else:
             break
 
-    # ── totals ────────────────────────────────────────────────────────────────
+    #    totals                                                                 
     total_correct = sum(s.correct  for s in all_sess)
     total_wrong   = sum(s.wrong    for s in all_sess)
     total_notes   = total_correct + total_wrong
     overall_acc   = round(total_correct / total_notes * 100, 1) if total_notes else 0
 
-    # ── song breakdown ────────────────────────────────────────────────────────
+    #    song breakdown                                                         
     song_map = collections.defaultdict(lambda: {"plays": 0, "acc_sum": 0.0, "song_name": ""})
     for s in all_sess:
         song_map[s.song_key]["plays"]    += 1
@@ -581,7 +553,7 @@ def analytics():
     })
 
 
-# ─── MIDI REFERENCE ROUTES ────────────────────────────────────────────────────
+#     MIDI REFERENCE ROUTES                                                     
 
 @app.route("/api/midi-references", methods=["GET"])
 @jwt_required()
@@ -625,7 +597,7 @@ def delete_midi_ref(ref_id):
     return jsonify({"deleted": True})
 
 
-# ─── STARTUP ──────────────────────────────────────────────────────────────────
+#     STARTUP                                                                   
 
 def load_model(model_path: str):
     global CNN_MODEL, DEVICE, MODEL_INFO, BEST_THRESHOLD

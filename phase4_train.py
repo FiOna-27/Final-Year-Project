@@ -1,44 +1,3 @@
-"""
-Piano Automatic Transcription — Phase 4
-========================================
-Training loop with BCE loss, Adam, and per-epoch metrics (Precision / Recall / F1).
-
-Checkpointing
--------------
-Two files are written to --output_dir:
-
-  best_model.pt      — saved whenever val F1 improves (used by the rest of the
-                        pipeline for inference).
-
-  last_checkpoint.pt — saved at the END of every epoch regardless of F1.
-                       Contains everything needed to resume: model weights,
-                       optimizer state, scheduler state, epoch number, best F1
-                       so far, and the full training history.
-
-Resume behaviour
-----------------
-If last_checkpoint.pt exists in --output_dir the script resumes automatically
-from the next epoch.  Pass --restart to ignore it and train from scratch.
-
-  # Normal run / resume after a crash:
-  python phase4_train.py --train_h5 dataset_train.h5 --val_h5 dataset_validation.h5
-
-  # Force fresh start (ignores any existing checkpoint):
-  python phase4_train.py --train_h5 dataset_train.h5 --val_h5 dataset_validation.h5 --restart
-
-Usage
------
-    python phase4_train.py \\
-        --train_h5  dataset_train.h5 \\
-        --val_h5    dataset_validation.h5 \\
-        --epochs    30 \\
-        --batch     64 \\
-        --lr        1e-3
-
-Requirements:
-    pip install torch torchvision h5py numpy scikit-learn tqdm
-"""
-
 import csv
 import os
 import argparse
@@ -53,12 +12,12 @@ from tqdm import tqdm
 from phase3_model import PianoTranscriptionCNN
 
 
-# ─────────────────────────────────────────────
+#                                              
 #  DATASET
-# ─────────────────────────────────────────────
+#                                              
 
 class PianoDataset(Dataset):
-    """Reads windows + labels from an HDF5 file produced by phase1_2_dataset.py."""
+    # Dataset for piano transcription. Each sample is a (N_MELS, N_FRAMES) mel spectrogram window extracted from the audio, and a binary label vector of shape (88,) indicating which MIDI pitches are active in that window. The HDF5 file has two resizable datasets: 'windows' of shape (n_samples, N_MELS, N_FRAMES) and 'labels' of shape (n_samples, 88).
 
     def __init__(self, h5_path: str):
         self.f = h5py.File(h5_path, "r")
@@ -70,7 +29,7 @@ class PianoDataset(Dataset):
         return len(self.windows)
 
     def __getitem__(self, idx):
-        # Add channel dim → (1, N_MELS, FRAMES)
+        # Add channel dim to (1, N_MELS, FRAMES)
         x = torch.from_numpy(self.windows[idx][None, ...])
         y = torch.from_numpy(self.labels[idx])
         return x, y
@@ -79,17 +38,12 @@ class PianoDataset(Dataset):
         self.f.close()
 
 
-# ─────────────────────────────────────────────
+#                                              
 #  METRICS
-# ─────────────────────────────────────────────
+#                                              
 
 def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0.5):
-    """
-    Compute precision, recall, F1 (micro-averaged across all 88 keys).
-
-    y_true : (N, 88) binary
-    y_prob : (N, 88) predicted probabilities
-    """
+    # Apply threshold to probabilities to get binary predictions
     y_pred = (y_prob >= threshold).astype(np.int32)
 
     # Flatten for micro average
@@ -99,9 +53,9 @@ def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0
     return p, r, f
 
 
-# ─────────────────────────────────────────────
+#                                              
 #  TRAINING LOOP
-# ─────────────────────────────────────────────
+#                                              
 
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
@@ -144,12 +98,12 @@ def evaluate(model, loader, criterion, device):
     all_probs  = np.vstack(all_probs)
     all_labels = np.vstack(all_labels)
 
-    # ── Threshold sweep — find the threshold that maximises F1 ──────────────
+    #    Threshold sweep — find the threshold that maximises F1               
     best_t, best_f1 = 0.5, 0.0
     print("  Threshold sweep:", end="")
     for t in np.arange(0.10, 0.71, 0.05):
         _, _, f = compute_metrics(all_labels, all_probs, threshold=t)
-        print(f" {t:.2f}→{f:.3f}", end="")
+        print(f" {t:.2f}to{f:.3f}", end="")
         if f > best_f1:
             best_f1 = f
             best_t  = t
@@ -159,9 +113,9 @@ def evaluate(model, loader, criterion, device):
     return avg_loss, p, r, f1, best_t
 
 
-# ─────────────────────────────────────────────
+#                                              
 #  CHECKPOINT HELPERS
-# ─────────────────────────────────────────────
+#                                              
 
 def save_last_checkpoint(path, epoch, model, optimizer, scheduler,
                          best_f1, n_mels, n_frames, history):
@@ -224,15 +178,15 @@ def append_history_csv(hist_path: str, row: dict, write_header: bool):
         writer.writerow(row)
 
 
-# ─────────────────────────────────────────────
+#                                              
 #  MAIN
-# ─────────────────────────────────────────────
+#                                              
 
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n🖥  Device: {device}")
 
-    # ── Datasets & loaders ────────────────────────────────────────────────────
+    #    Datasets & loaders                                                     
     print("\nLoading datasets ...")
     train_ds = PianoDataset(args.train_h5)
     val_ds   = PianoDataset(args.val_h5)
@@ -246,7 +200,7 @@ def main(args):
     sample_x, _ = train_ds[0]
     _, n_mels, n_frames = sample_x.shape
 
-    # ── Model, loss, optimizer, scheduler ────────────────────────────────────
+    #    Model, loss, optimizer, scheduler                                     
     model = PianoTranscriptionCNN(n_mels=n_mels, n_frames=n_frames).to(device)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model parameters: {total_params:,}")
@@ -266,14 +220,14 @@ def main(args):
     best_ckpt_path = os.path.join(args.output_dir, "best_model.pt")
     hist_path      = os.path.join(args.output_dir, "training_history.csv")
 
-    # ── Resume or fresh start ─────────────────────────────────────────────────
+    #    Resume or fresh start                                                  
     start_epoch = 1
     best_f1        = 0.0
     best_threshold = 0.5   # updated each epoch by the threshold sweep
     history        = []
 
     if not args.restart and os.path.exists(last_ckpt_path):
-        print(f"\n🔄 Resuming from checkpoint: {last_ckpt_path}")
+        print(f"\n Resuming from checkpoint: {last_ckpt_path}")
         start_epoch, best_f1, history = load_last_checkpoint(
             last_ckpt_path, model, optimizer, scheduler, device
         )
@@ -282,7 +236,7 @@ def main(args):
     else:
         if args.restart and os.path.exists(last_ckpt_path):
             print(f"\n⚠  --restart passed: ignoring existing checkpoint.")
-        print(f"\n🚀 Starting fresh training run.")
+        print(f"\n Starting fresh training run.")
 
     end_epoch = start_epoch + args.epochs - 1   # honour --epochs as "epochs to run"
 
@@ -291,7 +245,7 @@ def main(args):
     if args.restart and os.path.exists(hist_path):
         os.remove(hist_path)                     # clear stale history on fresh start
 
-    print(f"\n🚀 Training epochs {start_epoch} → {end_epoch} ...\n")
+    print(f"\n Training epochs {start_epoch} to {end_epoch} ...\n")
 
     for epoch in range(start_epoch, end_epoch + 1):
         print(f"Epoch {epoch}/{end_epoch}")
@@ -310,28 +264,28 @@ def main(args):
                    precision=p, recall=r, f1=f1, best_threshold=best_t)
         history.append(row)
 
-        # ── Save last_checkpoint.pt (every epoch, for crash recovery) ─────
+        #    Save last_checkpoint.pt (every epoch, for crash recovery)      
         save_last_checkpoint(last_ckpt_path, epoch, model, optimizer, scheduler,
                              best_f1, n_mels, n_frames, history)
-        print(f"  💿 last_checkpoint.pt updated  (epoch {epoch})")
+        print(f"   last_checkpoint.pt updated  (epoch {epoch})")
 
-        # ── Append this epoch to CSV immediately ───────────────────────────
+        #    Append this epoch to CSV immediately                            
         append_history_csv(hist_path, row, write_header=csv_needs_header)
         csv_needs_header = False                 # only write header once
 
-        # ── Save best_model.pt if F1 improved ─────────────────────────────
+        #    Save best_model.pt if F1 improved                              
         if f1 > best_f1:
             best_f1 = f1
             save_best_model(best_ckpt_path, epoch, model, optimizer, f1, n_mels, n_frames)
             # Also save best threshold so app.py can use it directly
             torch.save({"threshold": best_t},
                        os.path.join(args.output_dir, "best_threshold.pt"))
-            print(f"  💾 best_model.pt updated  (F1={best_f1:.3f}  threshold={best_t:.2f}) → {best_ckpt_path}")
+            print(f"  💾 best_model.pt updated  (F1={best_f1:.3f}  threshold={best_t:.2f}) to {best_ckpt_path}")
 
     print(f"\n✅ Training complete!  Best F1 = {best_f1:.3f}")
-    print(f"   History  → {hist_path}")
-    print(f"   Best     → {best_ckpt_path}")
-    print(f"   Resume   → {last_ckpt_path}")
+    print(f"   History  to {hist_path}")
+    print(f"   Best     to {best_ckpt_path}")
+    print(f"   Resume   to {last_ckpt_path}")
 
 
 if __name__ == "__main__":

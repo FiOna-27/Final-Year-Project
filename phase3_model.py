@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class ConvBlock(nn.Module):
-    """Conv2d → BatchNorm → ReLU → optional MaxPool."""
+    # Simple convolutional block: Conv2d → BatchNorm → ReLU → (optional MaxPool)
     def __init__(self, in_ch, out_ch, pool=True):
         super().__init__()
         layers = [
@@ -20,15 +20,10 @@ class ConvBlock(nn.Module):
 
 
 class PianoTranscriptionCNN(nn.Module):
-    """
-    Small CNN for frame-level piano note transcription.
-
-    Takes a mel spectrogram window and outputs 88 note probabilities.
-    Works with any (N_MELS, N_FRAMES) size — the adaptive pool before the
-    fully-connected head normalises the spatial dimensions.
-
-    Default config matches build_dataset.py: N_MELS=64, N_FRAMES=11.
-    """
+    # Compact CNN for single-note piano pitch classification. Smaller than the MAESTRO CNN because:
+    # - NSynth examples are clean isolated notes (less variation to model)
+    # - We only need to classify 88 pitches (not detect multiple simultaneously)
+    # - Smaller model = less overfitting on 70,000 clean examples
     #  Architecture inspired by common audio CNNs, but simplified for this task.
     def __init__(self, n_mels: int = 64, n_frames: int = 11, n_notes: int = 88):
         super().__init__()

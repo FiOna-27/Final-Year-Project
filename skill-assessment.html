@@ -285,7 +285,7 @@
 
       <div style="text-align:center;margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
         <button class="retry-btn" onclick="retryAssessment()">↺ RETRY ASSESSMENT</button>
-        <a href="lesson-plan.html" id="lessonPlanBtn" style="display:inline-block;padding:10px 24px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">✦ MAKE MY LESSON PLAN →</a>
+        <a href="lesson-plan.html" id="lessonPlanBtn" style="display:inline-block;padding:10px 24px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Space Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">✦ MAKE MY LESSON PLAN to</a>
       </div>
     </div>
   </div>
@@ -304,7 +304,7 @@ const ENHARMONIC = { 'Bb':'A#','Eb':'D#','Ab':'G#','Db':'C#','Gb':'F#' };
 // so the sequence is different every attempt and cannot be memorised.
 const POOLS = {
   beginner: {
-    // White keys only, octaves 3–5. 21 notes → pick 4 each run.
+    // White keys only, octaves 3–5. 21 notes to pick 4 each run.
     pool: [
       'C3','D3','E3','F3','G3','A3','B3',
       'C4','D4','E4','F4','G4','A4','B4',
@@ -315,7 +315,7 @@ const POOLS = {
     desc: 'White keys only — random selection each attempt'
   },
   intermediate: {
-    // Full chromatic, octaves 3–5. 36 notes → pick 5 each run.
+    // Full chromatic, octaves 3–5. 36 notes to pick 5 each run.
     pool: [
       'C3','C#3','D3','Eb3','E3','F3','F#3','G3','Ab3','A3','Bb3','B3',
       'C4','C#4','D4','Eb4','E4','F4','F#4','G4','Ab4','A4','Bb4','B4',
@@ -326,7 +326,7 @@ const POOLS = {
     desc: 'Chromatic across 3 octaves — random selection each attempt'
   },
   expert: {
-    // Full chromatic, octaves 2–6. 60 notes → pick 6 each run.
+    // Full chromatic, octaves 2–6. 60 notes to pick 6 each run.
     pool: [
       'C2','C#2','D2','Eb2','E2','F2','F#2','G2','Ab2','A2','Bb2','B2',
       'C3','C#3','D3','Eb3','E3','F3','F#3','G3','Ab3','A3','Bb3','B3',
@@ -373,7 +373,7 @@ function midiToOctave(m){ return Math.floor(m / 12) - 1; }
 function midiToFull(m){ return midiToName(m) + midiToOctave(m); }
 
 function noteToMidi(n){
-  // Handle enharmonics: Bb3 → A#3
+  // Handle enharmonics: Bb3 to A#3
   const canon = n.replace(/^(Bb|Eb|Ab|Db|Gb)/, k => ENHARMONIC[k]);
   const mm = canon.match(/([A-G]#?)(\d)/);
   if(!mm) return 60;
@@ -657,7 +657,7 @@ function advanceNote(){
     } else {
       // Brief pause between rounds
       setStatus('Round complete — next round starting…', '');
-      document.getElementById('noteTarget').textContent = '→';
+      document.getElementById('noteTarget').textContent = 'to';
       document.getElementById('noteTarget').className = 'note-target';
       setTimeout(()=>startRound(), 1400);
     }

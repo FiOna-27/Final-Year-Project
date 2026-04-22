@@ -113,7 +113,7 @@ const m2full = m => NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 
 let parsedMidiNotes=[];
 
-// ── Drag-and-drop zone setup ──────────────────────────────────────────────────
+//    Drag-and-drop zone setup                                                   
 const zone  = document.getElementById('midiZone');
 const input = document.getElementById('midiFile');
 zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('drag');});
@@ -121,7 +121,7 @@ zone.addEventListener('dragleave', ()=>zone.classList.remove('drag'));
 zone.addEventListener('drop', e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleMidiFile(f);});
 input.addEventListener('change', e=>{if(e.target.files[0])handleMidiFile(e.target.files[0]);});
 
-// ── MIDI parsing ──────────────────────────────────────────────────────────────
+//    MIDI parsing                                                               
 async function handleMidiFile(file){
   if(!file.name.match(/\.midi?$/i)){alert('Please upload a .mid or .midi file.');return;}
   document.getElementById('midiFName').textContent=file.name;
@@ -136,7 +136,7 @@ async function handleMidiFile(file){
     document.getElementById('midiProgLbl').textContent='Parsed — '+parsedMidiNotes.length+' notes';
     document.getElementById('midiInfo').textContent=
       parsedMidiNotes.length+' notes detected'+(parsedMidiNotes.length?
-        ' · '+m2full(parsedMidiNotes[0].midi)+' → '+m2full(parsedMidiNotes[parsedMidiNotes.length-1].midi):'');
+        ' · '+m2full(parsedMidiNotes[0].midi)+' to '+m2full(parsedMidiNotes[parsedMidiNotes.length-1].midi):'');
     // Show first 20 notes as preview chips
     const prev=document.getElementById('midiNotePreview'); prev.innerHTML='';
     parsedMidiNotes.slice(0,24).forEach((n,i)=>{
@@ -196,7 +196,7 @@ function clearUpload(){
   document.getElementById('midiFile').value='';
 }
 
-// ── Library save / load / delete ──────────────────────────────────────────────
+//    Library save / load / delete                                               
 async function saveMidi(){
   const title=document.getElementById('midiTitle').value.trim();
   if(!title){document.getElementById('midiTitle').focus();return;}

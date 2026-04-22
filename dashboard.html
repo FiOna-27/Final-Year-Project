@@ -195,14 +195,14 @@
 <script>
 const API = getApiUrl();
 
-// ── Auth guard ──
+//    Auth guard   
 const token = localStorage.getItem('pc_token');
 if(!token) window.location.href = 'login.html';
 
 let currentUser = null;
 try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
 
-// ── Render user info immediately from cache ──
+//    Render user info immediately from cache   
 function renderUser(user){
   if(!user) return;
   const initial = user.username[0].toUpperCase();
@@ -230,7 +230,7 @@ function applyLevel(level){
 
 if(currentUser) renderUser(currentUser);
 
-// ── Fetch fresh user data ──
+//    Fetch fresh user data   
 async function fetchMe(){
   try{
     const r = await fetch(API+'/me', { headers:{'Authorization':'Bearer '+token} });
@@ -260,7 +260,7 @@ function logout(){
   window.location.href='login.html';
 }
 
-// ── Toast ──
+//    Toast   
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');

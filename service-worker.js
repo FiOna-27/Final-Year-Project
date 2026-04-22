@@ -1,4 +1,4 @@
-// ── Cache version — increment this string any time you want to force a refresh
+//    Cache version — increment this string any time you want to force a refresh
 // of all cached files (e.g. after updating HTML). Clients will pick up the new
 // version on next load and drop the old cache automatically.
 const CACHE = 'piano-coach-v2';

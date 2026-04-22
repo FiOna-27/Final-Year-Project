@@ -51,7 +51,7 @@
   }
   @keyframes spin{ to{transform:rotate(360deg)} }
 
-  /* ── Top stat cards ── */
+  /*    Top stat cards    */
   .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
   .stat-card{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
@@ -69,7 +69,7 @@
   .stat-value.warn  { color:var(--warn); }
   .stat-sub{ font-size:0.58rem; color:var(--text-dim); margin-top:5px; }
 
-  /* ── Streak banner ── */
+  /*    Streak banner    */
   .streak-banner{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     padding:20px 24px; margin-bottom:24px;
@@ -96,7 +96,7 @@
     pointer-events:none; color:var(--text);
   }
 
-  /* ── Charts section ── */
+  /*    Charts section    */
   .section-title{
     font-size:0.58rem; letter-spacing:0.22em; color:var(--text-dim);
     text-transform:uppercase; margin-bottom:12px; margin-top:8px;
@@ -110,7 +110,7 @@
   .chart-title span{ color:var(--text-dim); font-weight:400; font-size:0.6rem; margin-left:8px; }
   .chart-wrap{ position:relative; height:200px; }
 
-  /* ── Song breakdown ── */
+  /*    Song breakdown    */
   .song-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
   .song-row{
     background:var(--surface); border:1px solid var(--border); border-radius:10px;
@@ -127,7 +127,7 @@
   .acc-bar-wrap{ height:3px; background:var(--border); border-radius:2px; margin-top:5px; }
   .acc-bar{ height:3px; border-radius:2px; transition:width 0.8s ease; }
 
-  /* ── Recent sessions table ── */
+  /*    Recent sessions table    */
   .recent-card{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     overflow:hidden; animation:fadeUp 0.4s 0.3s ease both;
@@ -201,7 +201,7 @@ if(!token) window.location.href = 'login.html';
 let currentUser = null;
 try{ currentUser = JSON.parse(localStorage.getItem('pc_user')); }catch(e){}
 
-// ── Fetch analytics ──────────────────────────────────────────────────────────
+//    Fetch analytics                                                           
 async function load(){
   try{
     const r = await fetch(API+'/analytics',{
@@ -216,7 +216,7 @@ async function load(){
   }
 }
 
-// ── Render ───────────────────────────────────────────────────────────────────
+//    Render                                                                    
 function render(d){
   const { sessions_by_day, streak, totals, song_breakdown, recent } = d;
 
@@ -308,7 +308,7 @@ function streakMessage(n){
   return `${n} days — incredible dedication! 🏆`;
 }
 
-// ── Calendar dots (last 30 days) ─────────────────────────────────────────────
+//    Calendar dots (last 30 days)                                              
 function buildCalendar(days){
   const wrap = document.getElementById('calDots');
   const today = new Date().toISOString().slice(0,10);
@@ -323,7 +323,7 @@ function buildCalendar(days){
   });
 }
 
-// ── Chart.js shared options ──────────────────────────────────────────────────
+//    Chart.js shared options                                                   
 const CHART_DEFAULTS = {
   plugins:{ legend:{ display:false }, tooltip:{
     backgroundColor:'#1a1a24', borderColor:'#2a2a3a', borderWidth:1,
@@ -340,7 +340,7 @@ const CHART_DEFAULTS = {
   responsive:true, maintainAspectRatio:false,
 };
 
-// ── Bar chart: pieces per day ─────────────────────────────────────────────────
+//    Bar chart: pieces per day                                                  
 function buildBarChart(days){
   const labels = days.map(d=>d.date.slice(5));   // MM-DD
   const counts = days.map(d=>d.count);
@@ -375,7 +375,7 @@ function buildBarChart(days){
   });
 }
 
-// ── Line chart: avg accuracy per day ─────────────────────────────────────────
+//    Line chart: avg accuracy per day                                          
 function buildLineChart(days){
   const active = days.filter(d=>d.count>0);
   const labels = active.map(d=>d.date.slice(5));
@@ -413,7 +413,7 @@ function buildLineChart(days){
   });
 }
 
-// ── Song breakdown grid ───────────────────────────────────────────────────────
+//    Song breakdown grid                                                        
 function buildSongGrid(songs){
   const grid = document.getElementById('songGrid');
   songs.forEach(s=>{
@@ -430,7 +430,7 @@ function buildSongGrid(songs){
   });
 }
 
-// ── Recent sessions rows ──────────────────────────────────────────────────────
+//    Recent sessions rows                                                       
 function buildRecentRows(sessions){
   const wrap = document.getElementById('recentRows');
   sessions.forEach(s=>{

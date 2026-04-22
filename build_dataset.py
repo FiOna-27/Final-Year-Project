@@ -21,7 +21,7 @@ MIDI_MIN     = 21      # A0
 MIDI_MAX     = 108     # C8
 N_NOTES      = 88
 
-#     AUDIO → MEL SPECTROGRAM                                                   
+#     AUDIO to MEL SPECTROGRAM                                                   
 
 def audio_to_mel(audio_path: str) -> np.ndarray:
     """Load audio and return normalised log-mel spectrogram (N_MELS × T)."""
@@ -39,7 +39,7 @@ def audio_to_mel(audio_path: str) -> np.ndarray:
     return mel_db.astype(np.float32)   # (N_MELS, T)
 
 
-#     MIDI → PIANO ROLL                                                         
+#     MIDI to PIANO ROLL                                                         
 
 def midi_to_piano_roll(midi_path: str, n_frames: int) -> np.ndarray:
     """Return binary piano roll (88 × T) aligned to mel frames."""
@@ -93,11 +93,7 @@ def process_pair(audio_path: str, midi_path: str):
 #     LOAD MAESTRO METADATA                                                     
 
 def load_pairs(maestro_dir: Path, split: str, max_files=None):
-    """
-    Return list of (audio_path, midi_path) for the requested split.
-    Handles both columnar-JSON (v3) and row-dict-JSON (v1/v2) formats,
-    plus a fallback directory scan if no JSON is found.
-    """
+    # Try to load metadata JSON for the given split — if not found, fall back to scanning the directory for audio/midi pairs.
     meta_path = maestro_dir / "maestro-v3.0.0.json"
     if not meta_path.exists():
         # Try v2 / v1 name
@@ -158,11 +154,7 @@ def load_pairs(maestro_dir: Path, split: str, max_files=None):
 #     WRITE HDF5                                                                
 
 def build_hdf5(pairs, out_path: str, split_label: str):
-    """
-    Process file pairs and write to HDF5 one file at a time.
-    Uses HDF5 resizable datasets so data is appended directly to disk —
-    RAM usage is bounded to one audio file at a time, not the whole dataset.
-    """
+    # Create output directory if it doesn't exist, and prepare to write HDF5 file with resizable datasets for windows and labels.
     os.makedirs(Path(out_path).parent, exist_ok=True)
     print(f"\n  Processing {len(pairs)} {split_label} pairs …")
 
@@ -224,7 +216,7 @@ def build_hdf5(pairs, out_path: str, split_label: str):
 #MAIN                                                                      
 
 def main():
-    parser = argparse.ArgumentParser(description="MAESTRO → HDF5 dataset builder")
+    parser = argparse.ArgumentParser(description="MAESTRO to HDF5 dataset builder")
     parser.add_argument("--maestro_dir", required=True,
                         help="Root of the MAESTRO dataset (contains year folders)")
     parser.add_argument("--output_dir",  required=True,
@@ -244,7 +236,7 @@ def main():
         sys.exit(1)
 
     print("\n" + "═"*60)
-    print("  MAESTRO → HDF5 Dataset Builder")
+    print("  MAESTRO to HDF5 Dataset Builder")
     print("═"*60)
     print(f"  librosa {librosa.__version__} · pretty_midi {pretty_midi.__version__}")
     print(f"  Config: N_MELS={N_MELS}  N_FRAMES={N_FRAMES}  SR={SAMPLE_RATE}")
@@ -271,7 +263,7 @@ def main():
     print(f"\n{'═'*60}")
     print(f"  Done in {elapsed/60:.1f} min")
     for split, n in totals.items():
-        print(f"  {split:12s}: {n:,} samples  →  dataset_{split}.h5")
+        print(f"  {split:12s}: {n:,} samples  to  dataset_{split}.h5")
     print("═"*60)
 
     print("""

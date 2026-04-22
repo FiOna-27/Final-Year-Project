@@ -20,7 +20,7 @@
     pointer-events:none; z-index:1000; opacity:0.4;
   }
 
-  /* ── Header ── */
+  /*    Header    */
   header{
     display:flex; align-items:center; justify-content:space-between;
     padding:15px 28px; border-bottom:1px solid var(--border);
@@ -36,10 +36,10 @@
   }
   .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
 
-  /* ── Main layout ── */
+  /*    Main layout    */
   main{ max-width:960px; margin:0 auto; padding:28px 22px; }
 
-  /* ── Song selector panel ── */
+  /*    Song selector panel    */
   .selector-panel{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     padding:20px 24px; margin-bottom:24px;
@@ -55,7 +55,7 @@
   .song-pill:hover{ border-color:var(--accent2); color:var(--accent2); }
   .song-pill.active{ background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:700; }
 
-  /* ── Song info bar ── */
+  /*    Song info bar    */
   .info-bar{
     display:flex; align-items:center; gap:20px;
     background:var(--surface); border:1px solid var(--border); border-radius:10px;
@@ -69,7 +69,7 @@
   }
   .info-chip.highlight{ border-color:var(--accent2); color:var(--accent2); }
 
-  /* ── Sheet music parchment area ── */
+  /*    Sheet music parchment area    */
   .sheet-wrap{
     background:#faf8f2;
     border:1px solid #d4cdb8;
@@ -109,7 +109,7 @@
   }
 
 
-  /* ── Your Uploads section ── */
+  /*    Your Uploads section    */
   .section-divider{
     display:flex; align-items:center; gap:14px; margin:32px 0 20px;
   }
@@ -216,7 +216,7 @@
 </main>
 
 <script>
-// ─── SONG DATA ───────────────────────────────────────────────────────────────
+//     SONG DATA                                                                
 const SONGS = {
   cmajor:   { name:'C Major Scale',          bpm:80,  notes:['C4','D4','E4','F4','G4','A4','B4','C5'] },
   twinkle:  { name:'Twinkle Twinkle',        bpm:100, notes:['C4','C4','G4','G4','A4','A4','G4','F4','F4','E4','E4','D4','D4','C4',
@@ -273,7 +273,7 @@ function renderSong(key) {
   const song     = SONGS[key];
   const measures = toMeasures(song.notes);
 
-  // ── Update info bar & parchment header FIRST (before any VexFlow code) ──
+  //    Update info bar & parchment header FIRST (before any VexFlow code)   
   document.getElementById('infoTitle').textContent     = song.name;
   document.getElementById('infoBpm').textContent       = song.bpm + ' BPM';
   document.getElementById('infoNotes').textContent     = song.notes.length + ' notes';
@@ -285,10 +285,10 @@ function renderSong(key) {
   container.innerHTML = '';
 
   try {
-    // ── VexFlow 4.x namespace ──
+    //    VexFlow 4.x namespace   
     const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Barline } = Vex.Flow;
 
-    // ── Layout ──
+    //    Layout   
     const WRAP_W   = container.parentElement.clientWidth - 48;
     const W        = Math.min(WRAP_W, 860);
     const STAVE_H  = 130;
@@ -304,14 +304,14 @@ function renderSong(key) {
     const rows  = Math.ceil(measures.length / mpr);
     const totalH = 20 + rows * STAVE_H;
 
-    // ── Create SVG renderer ──
+    //    Create SVG renderer   
     const renderer = new Renderer(container, Renderer.Backends.SVG);
     renderer.resize(W, totalH);
     const ctx = renderer.getContext();
     ctx.setFillStyle('#1a1208');
     ctx.setStrokeStyle('#1a1208');
 
-    // ── Draw row by row ──
+    //    Draw row by row   
     let mi = 0;
     for (let row = 0; row < rows; row++) {
       let x = 0;
@@ -323,14 +323,14 @@ function renderSong(key) {
         const sw = isFirstCol ? FIRST_W : REST_W;
         const chunk = measures[mi];
 
-        // ── Stave ──
+        //    Stave   
         const stave = new Stave(x, y, sw);
         if (isFirstRow && isFirstCol) stave.addClef('treble').addTimeSignature('4/4');
         else if (isFirstCol)          stave.addClef('treble');
         if (mi === measures.length - 1) stave.setEndBarType(Barline.type.END);
         stave.setContext(ctx).draw();
 
-        // ── Build StaveNotes ──
+        //    Build StaveNotes   
         const vfNotes = [];
         const accSeen = {};
 
@@ -359,7 +359,7 @@ function renderSong(key) {
           }
         }
 
-        // ── Voice + Format + Draw ──
+        //    Voice + Format + Draw   
         const voice = new Voice({ num_beats: 4, beat_value: 4 }).setStrict(false);
         voice.addTickables(vfNotes);
 
@@ -381,7 +381,7 @@ function renderSong(key) {
   }
 }
 
-// ─── SONG PILLS ──────────────────────────────────────────────────────────────
+//     SONG PILLS                                                               
 function buildPills() {
   const wrap = document.getElementById('songPills');
   SONG_KEYS.forEach(k => {
@@ -398,7 +398,7 @@ function buildPills() {
   });
 }
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
+//     INIT                                                                     
 buildPills();
 
 // Wait for VexFlow to fully initialise before first render
@@ -418,11 +418,11 @@ window.addEventListener('resize', () => {
   if(currentKey) resizeTimer = setTimeout(() => renderSong(currentKey), 200);
 });
 
-// ─── YOUR UPLOADS ─────────────────────────────────────────────────────────────
+//     YOUR UPLOADS                                                              
 
 const NOTE_NAMES_SM = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
-// MIDI number → note string e.g. 60 → "C4", 61 → "C#4"
+// MIDI number to note string e.g. 60 to "C4", 61 to "C#4"
 function midiToNoteName(m){
   return NOTE_NAMES_SM[m % 12] + (Math.floor(m / 12) - 1);
 }
@@ -476,7 +476,7 @@ async function loadUploads(){
     if(!r.ok) throw new Error('Server returned ' + r.status);
     const refs = await r.json();
     if(!refs.length){
-      section.innerHTML = '<div class="uploads-empty">No MIDI files uploaded yet. <a href="analyser.html" style="color:var(--accent2);text-decoration:none;">Upload one →</a></div>';
+      section.innerHTML = '<div class="uploads-empty">No MIDI files uploaded yet. <a href="analyser.html" style="color:var(--accent2);text-decoration:none;">Upload one to</a></div>';
       return;
     }
     const grid = document.createElement('div');

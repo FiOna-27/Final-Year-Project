@@ -23,7 +23,7 @@
 
   main{ max-width:860px; margin:0 auto; padding:28px 22px; flex:1; width:100%; }
 
-  /* ── API key setup card ── */
+  /*    API key setup card    */
   .api-card{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     padding:24px 28px; margin-bottom:24px;
@@ -48,7 +48,7 @@
   .api-hint a:hover{ text-decoration:underline; }
   .api-saved{ font-size:0.6rem; color:var(--right); letter-spacing:0.1em; display:none; }
 
-  /* ── Session summary card ── */
+  /*    Session summary card    */
   .summary-card{
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     padding:22px 28px; margin-bottom:24px;
@@ -66,7 +66,7 @@
   .stat-pill .sp-val.bad{ color:var(--wrong); }
   .stat-pill .sp-lbl{ color:var(--text-dim); font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; }
 
-  /* ── Note timeline ── */
+  /*    Note timeline    */
   .timeline-label{ font-size:0.58rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
   .timeline{ display:flex; gap:4px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
   .tn{
@@ -83,7 +83,7 @@
   .tn.skipped{ opacity:0.35; }
   .tn .tn-tag{ font-size:0.38rem; line-height:1; }
 
-  /* ── Generate button ── */
+  /*    Generate button    */
   .gen-wrap{ margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   .gen-btn{
     padding:12px 28px; border-radius:8px; border:1px solid var(--accent);
@@ -94,7 +94,7 @@
   .gen-btn:disabled{ opacity:0.4; cursor:not-allowed; }
   .gen-status{ font-size:0.6rem; color:var(--text-dim); letter-spacing:0.08em; }
 
-  /* ── Feedback parchment ── */
+  /*    Feedback parchment    */
   .parchment{
     background:#faf8f2; border:1px solid #d4cdb8; border-radius:12px;
     padding:32px 36px; box-shadow:0 4px 24px rgba(0,0,0,0.4);
@@ -123,7 +123,7 @@
   @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:0} }
   .cursor{ display:inline-block; width:2px; height:1em; background:#5a4a2a; margin-left:2px; animation:blink 1s infinite; vertical-align:text-bottom; }
 
-  /* ── No session state ── */
+  /*    No session state    */
   .no-session{
     text-align:center; padding:60px 20px;
     font-family:'Playfair Display',serif; font-style:italic; color:var(--text-dim); font-size:1rem;
@@ -185,7 +185,7 @@ const SESSION_KEY = 'pc_llm_session';
 
 let session = null;
 
-// ── Load session ──────────────────────────────────────────────────────────────
+//    Load session                                                               
 function init(){
   const raw = sessionStorage.getItem(SESSION_KEY);
   if(!raw){
@@ -201,7 +201,7 @@ function init(){
 
 function flash(msg){ const s=document.getElementById('genStatus'); s.textContent=msg; setTimeout(()=>{ if(s.textContent===msg) s.textContent=''; },2000); }
 
-// ── Render summary ────────────────────────────────────────────────────────────
+//    Render summary                                                             
 function renderSummary(){
   const s = session;
   document.getElementById('sumSong').textContent = s.song;
@@ -251,12 +251,12 @@ function renderSummary(){
   });
 }
 
-// ── Build prompt ──────────────────────────────────────────────────────────────
+//    Build prompt                                                               
 function buildPrompt(){
   const s = session;
   const noteLines = (s.notes||[]).map((n,i)=>{
     const r = (s.noteResults||[])[i]||'skipped';
-    return `  Note ${i+1}: ${n} → ${r}`;
+    return `  Note ${i+1}: ${n} to ${r}`;
   }).join('\n');
 
   const wrongNotes = (s.notes||[]).filter((_,i)=>['wrong','late','early'].includes((s.noteResults||[])[i]));
@@ -460,7 +460,7 @@ async function generate(){
   btn.disabled = false;
 }
 
-// ── Format feedback text ──────────────────────────────────────────────────────
+//    Format feedback text                                                       
 // Turns section headers (ALL CAPS lines) into styled spans, escapes HTML otherwise
 function formatFeedback(text){
   const escaped = text
@@ -472,7 +472,7 @@ function formatFeedback(text){
   return escaped.replace(/^([A-Z][A-Z\s]{3,})$/gm, '<span class="section-head">$1</span>');
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+//    Boot                                                                       
 init();
 </script>
 </body>

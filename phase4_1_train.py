@@ -180,7 +180,7 @@ def main(args):
     if args.restart and os.path.exists(hist_path):
         os.remove(hist_path)
 
-    print(f'\n Training epochs {start_epoch} → {end_epoch} …\n')
+    print(f'\n Training epochs {start_epoch} to {end_epoch} …\n')
 
     for epoch in range(start_epoch, end_epoch + 1):
         print(f'Epoch {epoch}/{end_epoch}')
@@ -217,12 +217,12 @@ def main(args):
             best_acc = top1
             save_best(best_ckpt, epoch, model, optimizer, top1, n_mels, n_frames)
             print(f'  💾 nsynth_best_model.pt  (top-1={best_acc:.3f} = {best_acc*100:.1f}%)'
-                  f'  → {best_ckpt}')
+                  f'  to {best_ckpt}')
 
     print(f'\n✅ NSynth training complete!')
     print(f'   Best top-1 accuracy: {best_acc:.3f} ({best_acc*100:.1f}%)')
-    print(f'   Model → {best_ckpt}')
-    print(f'   History → {hist_path}')
+    print(f'   Model to {best_ckpt}')
+    print(f'   History to {hist_path}')
 
 
 if __name__ == '__main__':

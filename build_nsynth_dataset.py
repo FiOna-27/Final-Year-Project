@@ -1,36 +1,3 @@
-#!/usr/bin/env python3
-"""
-build_nsynth_dataset.py — NSynth Piano → HDF5
-===============================================
-Converts NSynth piano samples into HDF5 training data for
-phase4_1_train.py (NSynthPitchCNN).
-
-NSynth structure:
-    nsynth-train/
-        audio/
-            keyboard_acoustic_000-060-075.wav   ← pitch=60, velocity=75
-            keyboard_acoustic_000-061-100.wav
-            ...
-        examples.json    ← metadata for all samples
-
-Filename format:
-    {instrument_family}_{instrument_source}_{instrument_number}-{pitch}-{velocity}.wav
-    pitch is MIDI note number (21-108 for piano range)
-
-USAGE:
-    python build_nsynth_dataset.py \\
-        --nsynth_dir  "E:\\TWOFYP\\data\\nsynth-train" \\
-        --output_dir  "E:\\TWOFYP\\data" \\
-        --max_files   5000
-
-    # Also process valid/test splits:
-    python build_nsynth_dataset.py \\
-        --nsynth_train "E:\\TWOFYP\\data\\nsynth-train" \\
-        --nsynth_valid "E:\\TWOFYP\\data\\nsynth-valid" \\
-        --nsynth_test  "E:\\TWOFYP\\data\\nsynth-test" \\
-        --output_dir   "E:\\TWOFYP\\data"
-"""
-
 import os, sys, json, argparse, time, re
 import numpy as np
 import h5py
@@ -38,7 +5,7 @@ import librosa
 from pathlib import Path
 from tqdm import tqdm
 
-# ── Must match phase3_nsynth_model.py and app.py ─────────────────────────────
+#    Must match phase3_nsynth_model.py and app.py                              
 SAMPLE_RATE = 16000
 HOP_LENGTH  = 512
 FFT_SIZE    = 2048
@@ -57,15 +24,10 @@ PIANO_FAMILIES = {'keyboard'}
 NSYNTH_SR = 16000
 
 
-# ── Audio → mel window ────────────────────────────────────────────────────────
+#    Audio to mel window                                                         
 
 def wav_to_mel_window(audio_path: str) -> np.ndarray:
-    """
-    Load a NSynth WAV and extract a single N_FRAMES mel window
-    centred on the note's attack (~0.1s in, where the note is clearest).
-
-    Returns (N_MELS, N_FRAMES) or None on error.
-    """
+    # Load audio, convert to mel spectrogram, normalise to [0,1], and extract a (N_MELS, N_FRAMES) window centred on the note attack.
     try:
         y, _ = librosa.load(audio_path, sr=SAMPLE_RATE, mono=True)
 
@@ -103,12 +65,7 @@ def wav_to_mel_window(audio_path: str) -> np.ndarray:
 
 
 def extract_pitch_from_filename(filename: str):
-    """
-    Parse MIDI pitch from NSynth filename.
-    Format: instrument_family_source_number-PITCH-velocity.wav
-    e.g.   keyboard_acoustic_000-060-075.wav → pitch=60
-    Returns int pitch (21-108) or None if invalid/out of piano range.
-    """
+   # Extract MIDI pitch from filename using regex. NSynth filenames have the format: "instrument-pitch-velocity-uniqueid.wav". We want the pitch number, which is a three-digit integer. If the filename doesn't match or the pitch is out of MIDI range, return None.
     m = re.search(r'-(\d{3})-\d{3}\.wav$', filename)
     if not m:
         return None
@@ -118,13 +75,10 @@ def extract_pitch_from_filename(filename: str):
     return pitch
 
 
-# ── Build HDF5 for one NSynth split ──────────────────────────────────────────
+#    Build HDF5 for one NSynth split                                           
 
 def build_hdf5_nsynth(nsynth_dir: Path, out_path: str, split_label: str, max_files=None):
-    """
-    Process all piano WAV files in nsynth_dir/audio/ and write to HDF5.
-    Labels are the MIDI pitch as a single integer (0-87, where 0=MIDI 21).
-    """
+    # Scan the audio/ folder for WAV files, filter for piano instruments using examples.json if available, and extract mel windows and pitch labels to write to HDF5. Each example is a single note, so the label is a single MIDI pitch class (0-87). The output HDF5 has two resizable datasets: 'windows' of shape (n_samples, N_MELS, N_FRAMES) and 'labels' of shape (n_samples,).
     audio_dir = nsynth_dir / 'audio'
     if not audio_dir.exists():
         print(f'  ⚠  audio/ folder not found in {nsynth_dir}')
@@ -209,10 +163,10 @@ def build_hdf5_nsynth(nsynth_dir: Path, out_path: str, split_label: str, max_fil
     return total_written
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+#    Main                                                                      
 
 def main():
-    parser = argparse.ArgumentParser(description='NSynth Piano → HDF5')
+    parser = argparse.ArgumentParser(description='NSynth Piano to HDF5')
 
     # Single-dir mode (all splits in one folder, rare)
     parser.add_argument('--nsynth_dir',   default=None,
@@ -236,7 +190,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print('\n' + '═'*60)
-    print('  NSynth Piano → HDF5 Dataset Builder')
+    print('  NSynth Piano to HDF5 Dataset Builder')
     print('═'*60)
     print(f'  Config: N_MELS={N_MELS}  N_FRAMES={N_FRAMES}  SR={SAMPLE_RATE}')
     print(f'  Output: {output_dir}')
